@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c1727" />
+    <meta
+      name="description"
+      content="See the live aircraft that may be audible above a UK postcode."
+    />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>Over My Home</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#results">Skip to aircraft</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <div>
+          <p class="eyebrow">Live aircraft nearby</p>
+          <h1>Over My Home</h1>
+          <p class="strapline">Which aircraft might be making the sound above you?</p>
+        </div>
+        <div class="live-mark" aria-label="Live data">
+          <span class="live-dot" aria-hidden="true"></span>
+          LIVE
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="search-panel" aria-labelledby="find-heading">
+        <h2 id="find-heading">Find aircraft near a postcode</h2>
+        <form id="search-form" novalidate>
+          <div class="form-row">
+            <label for="postcode">UK postcode</label>
+            <div class="postcode-row">
+              <input
+                id="postcode"
+                name="postcode"
+                inputmode="text"
+                autocomplete="postal-code"
+                autocapitalize="characters"
+                placeholder="YO1 7HH"
+                maxlength="10"
+                required
+              />
+              <button type="submit">Show aircraft</button>
+            </div>
+          </div>
+
+          <div class="range-row">
+            <div>
+              <label for="range">Modelled hearing distance</label>
+              <p class="field-help">This is an estimate, not a sound measurement.</p>
+            </div>
+            <output id="range-output" for="range">18 km</output>
+          </div>
+          <input id="range" name="range" type="range" min="8" max="30" step="1" value="18" />
+        </form>
+      </section>
+
+      <section class="status-panel" aria-live="polite" aria-atomic="true">
+        <div id="status" class="status">Enter a postcode to begin.</div>
+        <button id="refresh-button" class="secondary-button" type="button" hidden>Refresh now</button>
+      </section>
+
+      <section id="results" class="results" aria-labelledby="results-heading">
+        <div class="results-heading-row">
+          <div>
+            <p id="location-label" class="location-label"></p>
+            <h2 id="results-heading">Aircraft you may hear</h2>
+          </div>
+          <p id="updated-at" class="updated-at"></p>
+        </div>
+
+        <div id="empty-state" class="empty-state" hidden>
+          <div class="empty-icon" aria-hidden="true">✦</div>
+          <h3>No modelled-audible aircraft right now</h3>
+          <p>The sky can change quickly. This page checks again automatically.</p>
+        </div>
+
+        <div id="aircraft-list" class="aircraft-list"></div>
+      </section>
+
+      <section class="explanation" aria-labelledby="how-heading">
+        <h2 id="how-heading">What “within hearing distance” means</h2>
+        <p>
+          The app combines the aircraft’s horizontal distance and altitude to estimate its
+          straight-line distance from the postcode. Weather, aircraft type, buildings and local
+          noise can make a real aircraft easier or harder to hear.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Live position data from OpenSky Network. UK postcode coordinates from Postcodes.io.
+        Your postcode is used for the request and saved only in this browser.
+      </p>
+    </footer>
+
+    <template id="aircraft-card-template">
+      <article class="aircraft-card">
+        <div class="aircraft-topline">
+          <div>
+            <p class="aircraft-kind"></p>
+            <h3 class="aircraft-callsign"></h3>
+          </div>
+          <span class="audibility-badge"></span>
+        </div>
+
+        <dl class="aircraft-facts">
+          <div>
+            <dt>Straight-line distance</dt>
+            <dd class="fact-distance"></dd>
+          </div>
+          <div>
+            <dt>Altitude</dt>
+            <dd class="fact-altitude"></dd>
+          </div>
+          <div>
+            <dt>Direction from you</dt>
+            <dd class="fact-bearing"></dd>
+          </div>
+          <div>
+            <dt>Movement</dt>
+            <dd class="fact-motion"></dd>
+          </div>
+          <div>
+            <dt>Speed</dt>
+            <dd class="fact-speed"></dd>
+          </div>
+          <div>
+            <dt>Position age</dt>
+            <dd class="fact-age"></dd>
+          </div>
+        </dl>
+      </article>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
