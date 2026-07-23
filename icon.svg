@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Over My Home aircraft icon">
+  <rect width="512" height="512" rx="96" fill="#0c1727"/>
+  <path d="M93 331h326v88H93z" fill="#ffd63d" opacity=".18"/>
+  <path d="M126 405V301l130-76 130 76v104" fill="none" stroke="#ffd63d" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M86 139l124 24 72-86 32 7-35 95 106 20 36-31 24 5-25 51-9 54-24-5-21-43-109-20-2 101-32-6-35-106-126-23z" fill="#f6f7f9"/>
+</svg>

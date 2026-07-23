@@ -1,0 +1,17 @@
+{
+  "name": "Over My Home",
+  "short_name": "Over My Home",
+  "description": "Live aircraft that may be audible above a UK postcode.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07101d",
+  "theme_color": "#0c1727",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
