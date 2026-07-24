@@ -1,0 +1,76 @@
+name: Live production verification
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/live-production-verification.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe deployed homepage and aircraft API
+        shell: bash
+        env:
+          BASE_URL: https://over-my-home.pages.dev
+        run: |
+          set -euo pipefail
+
+          request() {
+            local url="$1"
+            local body="$2"
+            local headers="$3"
+            curl \
+              --silent \
+              --show-error \
+              --location \
+              --retry 5 \
+              --retry-all-errors \
+              --retry-delay 5 \
+              --connect-timeout 15 \
+              --max-time 45 \
+              --dump-header "$headers" \
+              --output "$body" \
+              --write-out '%{http_code}' \
+              "$url"
+          }
+
+          homepage_status="$(request "$BASE_URL/" homepage.html homepage.headers)"
+          echo "Homepage status: $homepage_status"
+          cat homepage.headers
+          test "$homepage_status" = "200"
+          grep -Fq 'Graphical local sky' homepage.html
+          grep -Fq 'Airplanes.live' homepage.html
+          grep -Fq 'Confirmed military' homepage.html
+          grep -Fq 'id="aircraft-list"' homepage.html
+
+          api_url="$BASE_URL/api/aircraft?postcode=YO32%209QU&range=18"
+          api_status="$(request "$api_url" api.json api.headers)"
+          echo "API status: $api_status"
+          cat api.headers
+          cat api.json
+          test "$api_status" = "200"
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const payload = JSON.parse(fs.readFileSync('api.json', 'utf8'));
+          if (payload.location?.postcode !== 'YO32 9QU') throw new Error('Unexpected postcode');
+          if (payload.rangeKm !== 18) throw new Error('Unexpected range');
+          if (!Array.isArray(payload.aircraft)) throw new Error('Aircraft is not an array');
+          if (payload.source?.provider !== 'Airplanes.live') throw new Error('Wrong provider');
+          if (payload.source?.nonCommercial !== true) throw new Error('Non-commercial boundary missing');
+          if (payload.source?.refreshSeconds !== 300) throw new Error('Five-minute provider cache not deployed');
+          console.log(`Live aircraft returned: ${payload.aircraft.length}`);
+          console.log(`Generated at: ${payload.generatedAt}`);
+          NODE
+
+          sleep 2
+          second_status="$(request "$api_url" api-second.json api-second.headers)"
+          echo "Second API status: $second_status"
+          cat api-second.headers
+          test "$second_status" = "200"
+          grep -Eiq '^x-over-my-home-cache: HIT' api-second.headers
