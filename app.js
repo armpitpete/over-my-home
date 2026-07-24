@@ -106,7 +106,7 @@ async function fetchAircraft(postcode) {
     }
 
     renderAircraft(data);
-    setStatus(`${data.aircraft.length} aircraft in the modelled hearing area · Airplanes.live`);
+    setStatus(`${data.aircraft.length} aircraft detected · Airplanes.live`);
   } catch (error) {
     if (error.name === 'AbortError') return;
     setStatus(error.message || 'Unable to load aircraft.', true);
