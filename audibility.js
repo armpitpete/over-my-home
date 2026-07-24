@@ -16,6 +16,20 @@ const BASE_SOUND_RANGE_KM = Object.freeze({
   B6: 4,
 });
 
+const SOUND_CLASS_LABELS = Object.freeze({
+  A1: 'Light aircraft',
+  A2: 'Small aircraft',
+  A3: 'Large aircraft',
+  A4: 'High-vortex aircraft',
+  A5: 'Heavy aircraft',
+  A6: 'High-performance aircraft',
+  A7: 'Helicopter or rotorcraft',
+  B1: 'Glider',
+  B2: 'Lighter-than-air craft',
+  B4: 'Ultralight aircraft',
+  B6: 'Unmanned aircraft',
+});
+
 const MOTOR_GLIDER_PATTERN = /MOTOR\s*GLIDER|MOTORGLIDER|SELF[-\s]?LAUNCH/i;
 
 export function slantDistanceKm(horizontalDistanceKm, altitudeFt) {
@@ -25,11 +39,10 @@ export function slantDistanceKm(horizontalDistanceKm, altitudeFt) {
 }
 
 export function soundRangeKm(aircraft = {}) {
-  const category = String(aircraft.category || '').trim().toUpperCase();
-  const description = [aircraft.typeCode, aircraft.description].filter(Boolean).join(' ');
-  const isMotorGlider = category === 'B1' && MOTOR_GLIDER_PATTERN.test(description);
+  const category = normalisedCategory(aircraft);
+  const motorGlider = isMotorGlider(aircraft);
 
-  let rangeKm = isMotorGlider
+  let rangeKm = motorGlider
     ? 3
     : BASE_SOUND_RANGE_KM[category] ?? 10;
 
@@ -71,4 +84,42 @@ export function audibilityLabel(audibility) {
     unlikely: 'Unlikely audible',
   };
   return labels[audibility] || labels.unlikely;
+}
+
+export function audibilityReason(aircraft = {}) {
+  const category = normalisedCategory(aircraft);
+  const distanceKm = slantDistanceKm(
+    aircraft.horizontalDistanceKm,
+    aircraft.altitudeFt,
+  ).toFixed(1);
+
+  if (category === 'B1' && !isMotorGlider(aircraft)) {
+    return `Glider category; little or no engine noise expected at ${distanceKm} km straight-line distance.`;
+  }
+
+  const soundClass = isMotorGlider(aircraft)
+    ? 'Motor glider'
+    : SOUND_CLASS_LABELS[category] || 'Aircraft class unknown';
+
+  return `${soundClass}, ${operationPhrase(aircraft.verticalRateFpm)}, ${distanceKm} km straight-line distance.`;
+}
+
+function normalisedCategory(aircraft) {
+  return String(aircraft?.category || '').trim().toUpperCase();
+}
+
+function isMotorGlider(aircraft) {
+  if (normalisedCategory(aircraft) !== 'B1') return false;
+  const description = [aircraft?.typeCode, aircraft?.description].filter(Boolean).join(' ');
+  return MOTOR_GLIDER_PATTERN.test(description);
+}
+
+function operationPhrase(verticalRateFpm) {
+  const verticalRate = Number(verticalRateFpm);
+  if (!Number.isFinite(verticalRate)) return 'vertical motion not reported';
+  if (verticalRate >= 2_000) return 'climbing rapidly';
+  if (verticalRate >= 500) return 'climbing';
+  if (verticalRate <= -2_000) return 'descending rapidly';
+  if (verticalRate <= -500) return 'descending';
+  return 'near-level flight';
 }
