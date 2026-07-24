@@ -1,5 +1,6 @@
 import { radarPosition, ringLabels } from './radar.js';
 import { createMotionState, projectMotionState } from './motion.js';
+import { audibilityForPosition } from './audibility.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const form = document.querySelector('#search-form');
@@ -295,7 +296,9 @@ function updateRadarMotion() {
   for (const { motionState, target } of radarMotionItems.values()) {
     const projectedAircraft = projectMotionState(motionState);
     const position = radarPosition(projectedAircraft, currentRangeKm);
+    const audibility = audibilityForPosition(projectedAircraft);
     target.setAttribute('transform', radarTransform(position));
+    target.classList.toggle('likely', audibility === 'likely');
   }
 }
 
