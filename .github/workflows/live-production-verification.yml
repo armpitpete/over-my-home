@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/live-production-verification.yml
+      - scripts/live-production-verify.mjs
 
 permissions:
   contents: read
@@ -13,86 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
+      - uses: actions/checkout@v4
       - name: Probe deployed homepage and aircraft API
-        shell: bash
-        env:
-          BASE_URL: https://over-my-home.pages.dev
-        run: |
-          set -u
-          failures=0
-
-          request() {
-            local url="$1"
-            local body="$2"
-            local headers="$3"
-            curl \
-              --silent \
-              --show-error \
-              --location \
-              --connect-timeout 10 \
-              --max-time 25 \
-              --dump-header "$headers" \
-              --output "$body" \
-              --write-out '%{http_code}' \
-              "$url"
-          }
-
-          require_text() {
-            local text="$1"
-            local file="$2"
-            if grep -Fq "$text" "$file"; then
-              echo "PASS marker: $text"
-            else
-              echo "FAIL missing marker: $text"
-              failures=$((failures + 1))
-            fi
-          }
-
-          homepage_status="$(request "$BASE_URL/" homepage.html homepage.headers || true)"
-          echo "=== HOMEPAGE STATUS: $homepage_status ==="
-          cat homepage.headers 2>/dev/null || true
-          echo "=== HOMEPAGE BODY ==="
-          cat homepage.html 2>/dev/null || true
-          if [ "$homepage_status" != "200" ]; then failures=$((failures + 1)); fi
-          require_text 'Graphical local sky' homepage.html
-          require_text 'Airplanes.live' homepage.html
-          require_text 'Confirmed military' homepage.html
-          require_text 'id="aircraft-list"' homepage.html
-
-          api_url="$BASE_URL/api/aircraft?postcode=YO32%209QU&range=18"
-          api_status="$(request "$api_url" api.json api.headers || true)"
-          echo "=== API STATUS: $api_status ==="
-          cat api.headers 2>/dev/null || true
-          echo "=== API BODY ==="
-          cat api.json 2>/dev/null || true
-          echo
-          if [ "$api_status" != "200" ]; then failures=$((failures + 1)); fi
-
-          if [ "$api_status" = "200" ]; then
-            node <<'NODE' || failures=$((failures + 1))
-          const fs = require('node:fs');
-          const payload = JSON.parse(fs.readFileSync('api.json', 'utf8'));
-          if (payload.location?.postcode !== 'YO32 9QU') throw new Error('Unexpected postcode');
-          if (payload.rangeKm !== 18) throw new Error('Unexpected range');
-          if (!Array.isArray(payload.aircraft)) throw new Error('Aircraft is not an array');
-          if (payload.source?.provider !== 'Airplanes.live') throw new Error('Wrong provider');
-          if (payload.source?.nonCommercial !== true) throw new Error('Non-commercial boundary missing');
-          if (payload.source?.refreshSeconds !== 300) throw new Error('Five-minute provider cache not deployed');
-          console.log(`Live aircraft returned: ${payload.aircraft.length}`);
-          console.log(`Generated at: ${payload.generatedAt}`);
-          NODE
-          fi
-
-          second_status="$(request "$api_url" api-second.json api-second.headers || true)"
-          echo "=== SECOND API STATUS: $second_status ==="
-          cat api-second.headers 2>/dev/null || true
-          if [ "$second_status" != "200" ]; then failures=$((failures + 1)); fi
-          if grep -Eiq '^x-over-my-home-cache: HIT' api-second.headers 2>/dev/null; then
-            echo 'PASS Cloudflare function cache: HIT'
-          else
-            echo 'FAIL Cloudflare function cache did not report HIT'
-            failures=$((failures + 1))
-          fi
-
-          echo "Verification failures: $failures"
-          test "$failures" -eq 0
+        run: node scripts/live-production-verify.mjs
