@@ -1,23 +1,21 @@
 {
   "liveUrl": "https://over-my-home.pages.dev",
   "postcode": "YO32 9QU",
-  "startedAt": "2026-07-24T19:36:47.335Z",
+  "startedAt": "2026-07-24T20:07:30.885Z",
   "deployment": {
     "status": 200,
     "attempts": 1
   },
   "api": {
     "status": 200,
-    "aircraftCount": 2,
-    "generatedAt": "2026-07-24T19:36:47.899Z",
+    "aircraftCount": 0,
+    "generatedAt": "2026-07-24T20:07:31.376Z",
     "location": {
       "postcode": "YO32 9QU",
       "area": "York"
     },
     "cache": "MISS",
-    "soundStates": {
-      "unlikely": 2
-    }
+    "soundStates": {}
   },
   "viewports": [
     {
@@ -74,16 +72,11 @@
         ]
       },
       "supportDirection": "column",
-      "aircraftCount": 2,
-      "zeroState": false,
+      "aircraftCount": 0,
+      "zeroState": true,
       "labelOverlapCount": 0,
       "motion": {
-        "checked": true,
-        "aircraft": "4d20e1",
-        "beforeTransform": "translate(494.20 362.51)",
-        "afterTransform": "translate(493.17 359.37)",
-        "beforeAge": "1s",
-        "afterAge": "3s"
+        "checked": false
       }
     },
     {
@@ -140,16 +133,11 @@
         ]
       },
       "supportDirection": "row",
-      "aircraftCount": 2,
-      "zeroState": false,
+      "aircraftCount": 0,
+      "zeroState": true,
       "labelOverlapCount": 0,
       "motion": {
-        "checked": true,
-        "aircraft": "4d20e1",
-        "beforeTransform": "translate(492.39 357.03)",
-        "afterTransform": "translate(491.35 353.89)",
-        "beforeAge": "4s",
-        "afterAge": "6s"
+        "checked": false
       }
     },
     {
@@ -206,16 +194,11 @@
         ]
       },
       "supportDirection": "row",
-      "aircraftCount": 2,
-      "zeroState": false,
+      "aircraftCount": 0,
+      "zeroState": true,
       "labelOverlapCount": 0,
       "motion": {
-        "checked": true,
-        "aircraft": "4d20e1",
-        "beforeTransform": "translate(490.59 351.58)",
-        "afterTransform": "translate(489.55 348.44)",
-        "beforeAge": "8s",
-        "afterAge": "10s"
+        "checked": false
       }
     }
   ],
@@ -228,5 +211,9 @@
     }
   },
   "status": "passed",
-  "completedAt": "2026-07-24T19:37:03.790Z"
+  "completedAt": "2026-07-24T20:07:40.463Z",
+  "providerCache": {
+    "status": "failed",
+    "error": "AssertionError [ERR_ASSERTION]: Nearby postcodes did not share one tile.\n+ actual - expected\n\n+ '575:715'\n- '576:715'\n     ^\n\n    at waitForSharedTileDeployment (file:///home/runner/work/over-my-home/over-my-home/scripts/live-provider-cache-acceptance.mjs:46:14)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async file:///home/runner/work/over-my-home/over-my-home/scripts/live-provider-cache-acceptance.mjs:11:18"
+  }
 }
