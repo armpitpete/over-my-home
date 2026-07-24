@@ -10,10 +10,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   acceptance:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -36,3 +37,17 @@ jobs:
           path: live-acceptance-artifacts
           if-no-files-found: error
           retention-days: 7
+      - name: Record acceptance report on branch
+        if: always() && github.event_name == 'push'
+        run: |
+          if [ ! -f live-acceptance-artifacts/report.json ]; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f live-acceptance-artifacts/report.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record live acceptance result [skip acceptance]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
