@@ -3,6 +3,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const REPORT_PATH = 'contact-submission/report.json';
 const CONTACT_URL = 'https://store.airplanes.live/pages/contact';
+const APPROVED_SENDER = 'Merrin W. Dream';
+const APPROVED_EMAIL = 'merrin@merrinworld.uk';
 
 const message = `Contributor API access request — Over My Home
 
@@ -41,24 +43,27 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const report = {
   contactUrl: CONTACT_URL,
-  senderName: 'Merrin W. Dream',
-  senderEmail: 'merrin@merrinworld.uk',
+  senderName: APPROVED_SENDER,
+  senderEmail: APPROVED_EMAIL,
   startedAt: new Date().toISOString(),
 };
 
 try {
   await page.goto(CONTACT_URL, { waitUntil: 'domcontentloaded', timeout: 60_000 });
 
-  const name = page.locator('input[name="contact[name]"]').first();
-  const email = page.locator('input[name="contact[email]"]').first();
-  const comment = page.locator('textarea[name="contact[body]"]').first();
+  const name = page.locator('input[name="contact[name]"]').or(page.getByLabel(/^Name$/i)).first();
+  const email = page.locator('input[name="contact[email]"]').or(page.getByLabel(/^Email/i)).first();
+  const comment = page.locator('textarea[name="contact[body]"]').or(page.getByLabel(/^Comment$/i)).first();
 
   await name.waitFor({ state: 'visible', timeout: 30_000 });
-  await name.fill('Merrin W. Dream');
-  await email.fill('merrin@merrinworld.uk');
+  await name.fill(APPROVED_SENDER);
+  await email.fill(APPROVED_EMAIL);
   await comment.fill(message);
 
-  const submit = page.locator('form[action*="/contact"] button[type="submit"], form[action*="/contact"] input[type="submit"]').first();
+  const submit = page
+    .locator('form[action*="/contact"] button[type="submit"], form[action*="/contact"] input[type="submit"]')
+    .or(page.getByRole('button', { name: /^Send$/i }))
+    .first();
   await submit.waitFor({ state: 'visible', timeout: 30_000 });
   await submit.click();
 
