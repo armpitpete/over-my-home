@@ -6,11 +6,14 @@ export default defineConfig({
   expect: { timeout: 5_000 },
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? 'line' : 'list',
+  reporter: process.env.CI
+    ? [['line'], ['html', { open: 'never' }]]
+    : 'list',
   use: {
     baseURL: 'http://127.0.0.1:4173',
     browserName: 'chromium',
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
   },
   webServer: {
     command: 'npm run serve',
