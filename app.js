@@ -1,6 +1,6 @@
 import { radarPosition, ringLabels } from './radar.js';
 import { createMotionState, projectMotionState } from './motion.js';
-import { audibilityForPosition } from './audibility.js';
+import { audibilityForPosition, audibilityLabel } from './audibility.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const form = document.querySelector('#search-form');
@@ -167,11 +167,12 @@ function renderAircraft(data) {
   data.aircraft.forEach((aircraft, index) => {
     const id = aircraft.icao24 || `aircraft-${index}`;
     availableIds.add(id);
-    renderAircraftCard(aircraft, id);
+    const audibilityBadge = renderAircraftCard(aircraft, id);
     const target = renderRadarTarget(aircraft, id, data.rangeKm);
     radarMotionItems.set(id, {
       motionState: createMotionState(aircraft, data.generatedAt, receivedAtMs),
       target,
+      audibilityBadge,
     });
   });
 
@@ -201,8 +202,7 @@ function renderAircraftCard(aircraft, id) {
   sourceBadge.classList.toggle('mlat', aircraft.source === 'mlat');
 
   const audibilityBadge = card.querySelector('.audibility-badge');
-  audibilityBadge.textContent = aircraft.audibility === 'likely' ? 'Likely audible' : 'Possibly audible';
-  audibilityBadge.classList.toggle('possible', aircraft.audibility !== 'likely');
+  setAudibilityState(null, audibilityBadge, aircraft.audibility);
 
   card.querySelector('.fact-distance').textContent = `${aircraft.slantDistanceKm.toFixed(1)} km`;
   card.querySelector('.fact-altitude').textContent = aircraft.altitudeFt == null
@@ -228,12 +228,13 @@ function renderAircraftCard(aircraft, id) {
     }
   });
   aircraftList.append(card);
+  return audibilityBadge;
 }
 
 function renderRadarTarget(aircraft, id, rangeKm) {
   const position = radarPosition(aircraft, rangeKm);
   const target = svgElement('g', {
-    class: `radar-target${aircraft.military ? ' military' : ''}${aircraft.audibility === 'likely' ? ' likely' : ''}`,
+    class: `radar-target${aircraft.military ? ' military' : ''} ${aircraft.audibility}`,
     transform: radarTransform(position),
     tabindex: '0',
     role: 'button',
@@ -293,13 +294,21 @@ function stopMotion() {
 function updateRadarMotion() {
   if (document.visibilityState !== 'visible') return;
 
-  for (const { motionState, target } of radarMotionItems.values()) {
+  for (const { motionState, target, audibilityBadge } of radarMotionItems.values()) {
     const projectedAircraft = projectMotionState(motionState);
     const position = radarPosition(projectedAircraft, currentRangeKm);
     const audibility = audibilityForPosition(projectedAircraft);
     target.setAttribute('transform', radarTransform(position));
-    target.classList.toggle('likely', audibility === 'likely');
+    setAudibilityState(target, audibilityBadge, audibility);
   }
+}
+
+function setAudibilityState(target, badge, audibility) {
+  for (const state of ['likely', 'possible', 'unlikely']) {
+    target?.classList.toggle(state, audibility === state);
+    badge?.classList.toggle(state, audibility === state);
+  }
+  if (badge) badge.textContent = audibilityLabel(audibility);
 }
 
 function radarTransform(position) {
