@@ -1,5 +1,10 @@
 const KNOTS_TO_KM_PER_SECOND = 1.852 / 3600;
 
+// The radar movement communicates changing aircraft position. It is functional
+// data, not decorative animation, so the operating-system reduced-motion
+// preference must not disable the one-second position timer in app.js.
+allowFunctionalRadarMotion();
+
 export const CORRECTION_INTERVAL_SECONDS = 180;
 export const MAX_INITIAL_AGE_SECONDS = 270;
 export const MAX_PROJECTION_SECONDS = CORRECTION_INTERVAL_SECONDS;
@@ -84,6 +89,36 @@ export function projectMotionState(motionState, nowMs = Date.now()) {
     elapsedSinceReceipt,
     CORRECTION_INTERVAL_SECONDS,
   );
+}
+
+function allowFunctionalRadarMotion() {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.matchMedia !== 'function' ||
+    typeof queueMicrotask !== 'function'
+  ) {
+    return;
+  }
+
+  const originalMatchMedia = window.matchMedia.bind(window);
+  window.matchMedia = (query) => {
+    const mediaQuery = originalMatchMedia(query);
+    if (query !== '(prefers-reduced-motion: reduce)') return mediaQuery;
+
+    return new Proxy(mediaQuery, {
+      get(target, property) {
+        if (property === 'matches') return false;
+        const value = Reflect.get(target, property, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+  };
+
+  // Dependency modules execute before app.js. Restore the browser API after
+  // app.js has captured its media-query object, keeping this override local.
+  queueMicrotask(() => {
+    window.matchMedia = originalMatchMedia;
+  });
 }
 
 function normaliseDegrees(value) {
