@@ -1,7 +1,7 @@
 {
   "liveUrl": "https://over-my-home.pages.dev",
   "postcode": "YO32 9QU",
-  "startedAt": "2026-07-24T20:30:20.134Z",
+  "startedAt": "2026-07-24T20:33:17.746Z",
   "deployment": {
     "status": 200,
     "attempts": 1
@@ -9,7 +9,7 @@
   "api": {
     "status": 200,
     "aircraftCount": 0,
-    "generatedAt": "2026-07-24T20:30:20.410Z",
+    "generatedAt": "2026-07-24T20:33:18.251Z",
     "location": {
       "postcode": "YO32 9QU",
       "area": "York"
@@ -211,7 +211,7 @@
     }
   },
   "status": "passed",
-  "completedAt": "2026-07-24T20:30:27.956Z",
+  "completedAt": "2026-07-24T20:33:26.622Z",
   "providerCache": {
     "status": "passed",
     "attempt": 1,
