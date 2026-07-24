@@ -1,8 +1,8 @@
-import { chromium } from 'playwright';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const REPORT_PATH = 'contact-submission/report.json';
-const CONTACT_URL = 'https://store.airplanes.live/pages/contact';
+const CONTACT_PAGE_URL = 'https://store.airplanes.live/pages/contact';
+const CONTACT_POST_URL = 'https://store.airplanes.live/contact';
 const APPROVED_SENDER = 'Merrin W. Dream';
 const APPROVED_EMAIL = 'merrin@merrinworld.uk';
 
@@ -39,86 +39,72 @@ try {
   // No previous successful report.
 }
 
-const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const report = {
-  contactUrl: CONTACT_URL,
+  contactUrl: CONTACT_PAGE_URL,
+  submitUrl: CONTACT_POST_URL,
   senderName: APPROVED_SENDER,
   senderEmail: APPROVED_EMAIL,
   startedAt: new Date().toISOString(),
 };
 
 try {
-  await page.goto(CONTACT_URL, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.waitForSelector('form[action*="/contact"], form#ContactForm', {
-    state: 'attached',
-    timeout: 30_000,
+  const form = new URLSearchParams();
+  form.set('form_type', 'contact');
+  form.set('utf8', '✓');
+  form.set('contact[name]', APPROVED_SENDER);
+  form.set('contact[email]', APPROVED_EMAIL);
+  form.set('contact[subject]', 'Contributor API access request — Over My Home');
+  form.set('contact[body]', message);
+
+  const response = await fetch(CONTACT_POST_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: {
+      Accept: 'text/html,application/xhtml+xml',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'Mozilla/5.0 (compatible; OverMyHome/1.0; +https://over-my-home.pages.dev)',
+      Referer: CONTACT_PAGE_URL,
+      Origin: 'https://store.airplanes.live',
+    },
+    body: form,
   });
 
-  const name = page.locator('#ContactForm-name:visible, input[name="contact[name]"]:visible').first();
-  const email = page.locator('#ContactForm-email:visible, input[name="contact[email]"]:visible').first();
-  const comment = page.locator('#ContactForm-body:visible, textarea[name="contact[body]"]:visible').first();
-
-  await name.waitFor({ state: 'visible', timeout: 30_000 });
-  await email.waitFor({ state: 'visible', timeout: 30_000 });
-  await comment.waitFor({ state: 'visible', timeout: 30_000 });
-
-  await name.fill(APPROVED_SENDER);
-  await email.fill(APPROVED_EMAIL);
-  await comment.fill(message);
-
-  const form = page.locator('form#ContactForm, form[action*="/contact"]').filter({ has: comment }).first();
-  await form.evaluate((element) => element.requestSubmit());
-
-  await page.waitForLoadState('domcontentloaded', { timeout: 60_000 }).catch(() => {});
-  await page.waitForTimeout(3_000);
-
-  const bodyText = await page.locator('body').innerText();
+  const bodyText = await response.text();
   const confirmationPatterns = [
     /thanks for contacting us/i,
     /thank you for contacting us/i,
     /your message has been sent/i,
     /we'll get back to you/i,
     /we will get back to you/i,
+    /contact form submitted successfully/i,
   ];
   const confirmed = confirmationPatterns.some((pattern) => pattern.test(bodyText));
   const challenged = /captcha|challenge|verify you are human|human verification/i.test(bodyText);
 
-  await page.screenshot({ path: 'contact-submission/confirmation.png', fullPage: true });
+  report.httpStatus = response.status;
+  report.finalUrl = response.url;
+  report.responseLength = bodyText.length;
 
-  if (!confirmed || challenged) {
+  if (!response.ok || !confirmed || challenged) {
     throw new Error(challenged
-      ? 'The contact form presented a human-verification challenge.'
-      : 'The contact form did not display a recognised submission confirmation.');
+      ? 'The contact endpoint presented a human-verification challenge.'
+      : `The contact endpoint did not confirm submission (HTTP ${response.status}).`);
   }
 
   report.status = 'submitted';
   report.completedAt = new Date().toISOString();
-  report.finalUrl = page.url();
   report.confirmation = bodyText
+    .replace(/<[^>]+>/g, '\n')
     .split('\n')
-    .map((line) => line.trim())
-    .find((line) => confirmationPatterns.some((pattern) => pattern.test(line))) || 'Submission confirmation displayed.';
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .find((line) => confirmationPatterns.some((pattern) => pattern.test(line))) || 'Submission confirmation returned.';
 } catch (error) {
   report.status = 'failed';
   report.completedAt = new Date().toISOString();
-  report.finalUrl = page.url();
   report.error = error instanceof Error ? error.stack || error.message : String(error);
-  report.formCount = await page.locator('form').count().catch(() => 0);
-  report.visibleInputs = await page.locator('input:visible, textarea:visible, button:visible').evaluateAll((elements) =>
-    elements.slice(0, 30).map((element) => ({
-      tag: element.tagName,
-      id: element.id || null,
-      name: element.getAttribute('name'),
-      type: element.getAttribute('type'),
-      text: element.textContent?.trim().slice(0, 100) || null,
-    })),
-  ).catch(() => []);
-  await page.screenshot({ path: 'contact-submission/failure.png', fullPage: true }).catch(() => {});
   process.exitCode = 1;
 } finally {
   await writeFile(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`);
-  await browser.close();
 }
 
 console.log(JSON.stringify(report, null, 2));
