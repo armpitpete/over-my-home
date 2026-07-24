@@ -1,4 +1,4 @@
-import { radarPosition, ringLabels } from './radar.js';
+import { formatRadarAltitude, radarBearingLabel, radarPosition, ringLabels } from './radar.js';
 import { createMotionState, projectMotionState } from './motion.js';
 import { audibilityForPosition, audibilityLabel } from './audibility.js';
 
@@ -168,10 +168,11 @@ function renderAircraft(data) {
     const id = aircraft.icao24 || `aircraft-${index}`;
     availableIds.add(id);
     const audibilityBadge = renderAircraftCard(aircraft, id);
-    const target = renderRadarTarget(aircraft, id, data.rangeKm);
+    const { target, altitudeLabel } = renderRadarTarget(aircraft, id, data.rangeKm);
     radarMotionItems.set(id, {
       motionState: createMotionState(aircraft, data.generatedAt, receivedAtMs),
       target,
+      altitudeLabel,
       audibilityBadge,
     });
   });
@@ -239,7 +240,7 @@ function renderRadarTarget(aircraft, id, rangeKm) {
     tabindex: '0',
     role: 'button',
     'aria-pressed': 'false',
-    'aria-label': `${displayName(aircraft)}, ${aircraft.bearingLabel}, ${aircraft.horizontalDistanceKm.toFixed(1)} kilometres away`,
+    'aria-label': radarTargetAriaLabel(aircraft),
   });
   target.dataset.aircraftId = id;
 
@@ -257,9 +258,18 @@ function renderRadarTarget(aircraft, id, rangeKm) {
     transform: `rotate(${Number.isFinite(aircraft.trackDegrees) ? aircraft.trackDegrees : 0})`,
   }));
 
-  const label = svgElement('text', { class: 'radar-target-label', y: '-31', 'text-anchor': 'middle' });
+  const label = svgElement('text', { class: 'radar-target-label', y: '-34', 'text-anchor': 'middle' });
   label.textContent = shortLabel(aircraft);
   target.append(label);
+
+  const altitudeLabel = svgElement('text', {
+    class: 'radar-target-altitude',
+    y: '-22',
+    'text-anchor': 'middle',
+    'aria-hidden': 'true',
+  });
+  altitudeLabel.textContent = formatRadarAltitude(aircraft.altitudeFt);
+  target.append(altitudeLabel);
 
   target.addEventListener('click', () => selectAircraft(id, true));
   target.addEventListener('keydown', (event) => {
@@ -269,7 +279,7 @@ function renderRadarTarget(aircraft, id, rangeKm) {
     }
   });
   radarAircraft.append(target);
-  return target;
+  return { target, altitudeLabel };
 }
 
 function startMotion() {
@@ -294,11 +304,13 @@ function stopMotion() {
 function updateRadarMotion() {
   if (document.visibilityState !== 'visible') return;
 
-  for (const { motionState, target, audibilityBadge } of radarMotionItems.values()) {
+  for (const { motionState, target, altitudeLabel, audibilityBadge } of radarMotionItems.values()) {
     const projectedAircraft = projectMotionState(motionState);
     const position = radarPosition(projectedAircraft, currentRangeKm);
     const audibility = audibilityForPosition(projectedAircraft);
     target.setAttribute('transform', radarTransform(position));
+    target.setAttribute('aria-label', radarTargetAriaLabel(projectedAircraft));
+    altitudeLabel.textContent = formatRadarAltitude(projectedAircraft.altitudeFt);
     setAudibilityState(target, audibilityBadge, audibility);
   }
 }
@@ -356,6 +368,18 @@ function displayName(aircraft) {
 function shortLabel(aircraft) {
   const value = aircraft.callsign || aircraft.registration || aircraft.typeCode || aircraft.icao24.toUpperCase();
   return value.slice(0, 10);
+}
+
+function radarTargetAriaLabel(aircraft) {
+  const parts = [displayName(aircraft)];
+  const altitude = Number(aircraft.altitudeFt);
+  if (Number.isFinite(altitude)) {
+    parts.push(`altitude ${Math.round(altitude).toLocaleString('en-GB')} feet`);
+  }
+  parts.push(
+    `${radarBearingLabel(aircraft.bearingDegrees)}, ${Math.max(0, Number(aircraft.horizontalDistanceKm) || 0).toFixed(1)} kilometres from home`,
+  );
+  return parts.join(', ');
 }
 
 function svgElement(name, attributes = {}) {
