@@ -55,6 +55,7 @@ export function projectAltitudeFt(
   elapsedSeconds,
   maxProjectionSeconds = MAX_PROJECTION_SECONDS,
 ) {
+  if (altitudeFt === null || altitudeFt === undefined || altitudeFt === '') return null;
   const altitude = Number(altitudeFt);
   if (!Number.isFinite(altitude)) return null;
 
