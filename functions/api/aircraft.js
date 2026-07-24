@@ -7,7 +7,7 @@ import {
 
 const AIRPLANES_URL = 'https://api.airplanes.live/v2/point';
 const POSTCODE_URL = 'https://api.postcodes.io/postcodes';
-const CACHE_TTL_SECONDS = 45;
+const CACHE_TTL_SECONDS = 300;
 
 export async function onRequestGet(context) {
   const url = new URL(context.request.url);
@@ -46,7 +46,7 @@ export async function onRequestGet(context) {
       source: {
         provider: 'Airplanes.live',
         nonCommercial: true,
-        refreshSeconds: 60,
+        refreshSeconds: CACHE_TTL_SECONDS,
       },
     };
 
