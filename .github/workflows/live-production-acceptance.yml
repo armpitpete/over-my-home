@@ -1,0 +1,35 @@
+name: Live production acceptance
+
+on:
+  push:
+    branches:
+      - agent/live-production-acceptance
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Test deployed production
+        env:
+          LIVE_URL: https://over-my-home.pages.dev
+          ACCEPTANCE_POSTCODE: YO32 9QU
+        run: node scripts/live-production-acceptance.mjs
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-production-acceptance
+          path: live-acceptance-artifacts
+          if-no-files-found: error
+          retention-days: 7
