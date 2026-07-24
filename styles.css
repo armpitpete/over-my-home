@@ -12,11 +12,14 @@
   --possible: #ffd978;
   --danger: #ff9b9b;
   --focus: #8fd1ff;
+  --military: #ff9b61;
+  --mlat: #8fd1ff;
   --radius: 18px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { background: var(--background); }
 body {
   margin: 0;
@@ -27,6 +30,8 @@ body {
 }
 button, input { font: inherit; }
 button { cursor: pointer; }
+a { color: var(--focus); }
+a:hover { color: var(--text); }
 .skip-link {
   position: absolute;
   left: 1rem;
@@ -44,7 +49,7 @@ button { cursor: pointer; }
   backdrop-filter: blur(14px);
 }
 .header-inner, main, footer {
-  width: min(920px, calc(100% - 2rem));
+  width: min(1020px, calc(100% - 2rem));
   margin-inline: auto;
 }
 .header-inner {
@@ -101,13 +106,13 @@ h1 {
   100% { box-shadow: 0 0 0 0 rgba(96, 230, 174, 0); }
 }
 main { padding: 1.25rem 0 3rem; }
-.search-panel, .explanation {
+.search-panel, .radar-panel, .explanation {
   padding: 1.25rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(12, 23, 39, 0.88);
 }
-.search-panel h2, .explanation h2, .results h2 { margin-top: 0; }
+.search-panel h2, .radar-panel h2, .explanation h2, .results h2 { margin-top: 0; }
 label {
   display: block;
   margin-bottom: 0.45rem;
@@ -138,7 +143,7 @@ button {
   font-weight: 900;
 }
 button:hover { filter: brightness(1.05); }
-button:focus-visible, input:focus-visible {
+button:focus-visible, input:focus-visible, .aircraft-card:focus-visible, .radar-target:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
@@ -172,7 +177,7 @@ button:disabled {
   justify-content: space-between;
   gap: 1rem;
   min-height: 3.5rem;
-  margin: 0.8rem 0 0;
+  margin: 0.8rem 0;
   padding: 0.75rem 0.25rem;
   color: var(--muted);
 }
@@ -184,18 +189,144 @@ button:disabled {
   color: var(--text);
   padding: 0.55rem 0.8rem;
 }
-.results {
-  scroll-margin-top: 1rem;
-  padding: 1.2rem 0;
-}
-.results-heading-row {
+.panel-heading-row, .results-heading-row {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.8rem;
 }
-.results-heading-row h2 { margin-bottom: 0; }
+.panel-heading-row h2, .results-heading-row h2 { margin-bottom: 0; }
+.radar-help {
+  margin: 0.6rem 0 1rem;
+  color: var(--muted);
+}
+.radar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem 0.85rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.radar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.radar-legend i { display: inline-block; }
+.legend-plane {
+  width: 0.9rem;
+  height: 0.9rem;
+  background: var(--good);
+  clip-path: polygon(50% 0, 62% 36%, 100% 48%, 100% 62%, 62% 58%, 62% 88%, 75% 100%, 25% 100%, 38% 88%, 38% 58%, 0 62%, 0 48%, 38% 36%);
+}
+.legend-military {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid var(--military);
+  transform: rotate(45deg);
+}
+.legend-mlat {
+  width: 1.4rem;
+  height: 0.85rem;
+  border: 1px solid var(--mlat);
+  border-radius: 999px;
+}
+.radar-frame {
+  position: relative;
+  width: min(100%, 760px);
+  margin-inline: auto;
+}
+#sky-radar {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.radar-field {
+  fill: #07101d;
+  stroke: #3c587b;
+  stroke-width: 2;
+}
+.radar-ring, .radar-axis {
+  fill: none;
+  stroke: #29405e;
+  stroke-width: 1;
+  stroke-dasharray: 5 7;
+}
+.radar-edge {
+  stroke: #527ba8;
+  stroke-dasharray: none;
+  stroke-width: 2;
+}
+.compass-label {
+  fill: var(--accent);
+  font-size: 17px;
+  font-weight: 900;
+}
+.ring-label {
+  fill: #7f91a8;
+  font-size: 11px;
+}
+.home-marker circle {
+  fill: var(--accent);
+  stroke: #fff2a8;
+  stroke-width: 3;
+}
+.home-marker path { fill: var(--accent-text); }
+.radar-empty {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: min(22rem, 70%);
+  margin: 0;
+  transform: translate(-50%, -50%);
+  color: var(--muted);
+  text-align: center;
+}
+.radar-target { cursor: pointer; }
+.radar-hit-area { fill: transparent; }
+.radar-pulse {
+  fill: rgba(96, 230, 174, 0.1);
+  stroke: rgba(96, 230, 174, 0.68);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.radar-target.likely .radar-pulse {
+  fill: rgba(96, 230, 174, 0.2);
+  stroke-dasharray: none;
+}
+.aircraft-symbol {
+  fill: var(--good);
+  stroke: #07101d;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.radar-target.military .aircraft-symbol { fill: var(--military); }
+.military-shield {
+  fill: rgba(255, 155, 97, 0.08);
+  stroke: var(--military);
+  stroke-width: 2;
+}
+.radar-target-label {
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: #07101d;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  font-size: 11px;
+  font-weight: 900;
+}
+.radar-target.selected .radar-pulse {
+  stroke: var(--accent);
+  stroke-width: 4;
+  fill: rgba(255, 214, 61, 0.16);
+}
+.radar-target.selected .radar-target-label { fill: var(--accent); }
+.results {
+  scroll-margin-top: 1rem;
+  padding: 1.4rem 0;
+}
+.results-heading-row { margin-bottom: 0.8rem; }
 .updated-at {
   margin: 0;
   color: var(--muted);
@@ -211,6 +342,13 @@ button:disabled {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: linear-gradient(150deg, rgba(18, 35, 58, 0.96), rgba(10, 22, 38, 0.96));
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.aircraft-card:hover { border-color: #4d719b; }
+.aircraft-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 214, 61, 0.15);
 }
 .aircraft-topline {
   display: flex;
@@ -224,6 +362,31 @@ button:disabled {
   margin: 0;
   font-size: clamp(1.45rem, 4vw, 2rem);
   letter-spacing: -0.03em;
+}
+.identity-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+.military-badge, .source-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+.military-badge {
+  border-color: rgba(255, 155, 97, 0.7);
+  color: var(--military);
+}
+.source-badge.mlat {
+  border-color: rgba(143, 209, 255, 0.75);
+  color: var(--mlat);
 }
 .audibility-badge {
   display: inline-flex;
@@ -285,27 +448,32 @@ footer {
   font-size: 0.85rem;
 }
 footer p { margin: 0; }
-@media (max-width: 680px) {
+@media (max-width: 760px) {
   .header-inner { padding-top: 1.7rem; }
   .live-mark { margin-top: 0.15rem; }
   .postcode-row { grid-template-columns: 1fr; }
   .postcode-row button { width: 100%; }
-  .aircraft-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .results-heading-row {
+  .panel-heading-row, .results-heading-row {
     align-items: flex-start;
     flex-direction: column;
   }
+  .radar-legend { justify-content: flex-start; }
+  .aircraft-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .updated-at { text-align: left; }
 }
-@media (max-width: 420px) {
+@media (max-width: 460px) {
   .header-inner { flex-direction: column; }
   .aircraft-topline { flex-direction: column; }
   .aircraft-facts { grid-template-columns: 1fr; }
+  .radar-panel { padding: 1rem 0.65rem; }
+  .panel-heading-row, .radar-help, .radar-legend { padding-inline: 0.35rem; }
+  .radar-target-label { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

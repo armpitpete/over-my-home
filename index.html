@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0c1727" />
     <meta
       name="description"
-      content="See the live aircraft that may be audible above a UK postcode."
+      content="See the live aircraft that may be audible above a UK postcode on a graphical local-sky radar."
     />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
@@ -14,7 +14,7 @@
     <title>Over My Home</title>
   </head>
   <body>
-    <a class="skip-link" href="#results">Skip to aircraft</a>
+    <a class="skip-link" href="#results">Skip to aircraft list</a>
 
     <header class="site-header">
       <div class="header-inner">
@@ -43,7 +43,7 @@
                 inputmode="text"
                 autocomplete="postal-code"
                 autocapitalize="characters"
-                placeholder="YO1 7HH"
+                placeholder="YO32 9QU"
                 maxlength="10"
                 required
               />
@@ -65,6 +65,54 @@
       <section class="status-panel" aria-live="polite" aria-atomic="true">
         <div id="status" class="status">Enter a postcode to begin.</div>
         <button id="refresh-button" class="secondary-button" type="button" hidden>Refresh now</button>
+      </section>
+
+      <section class="radar-panel" aria-labelledby="radar-heading">
+        <div class="panel-heading-row">
+          <div>
+            <p class="eyebrow">Graphical local sky</p>
+            <h2 id="radar-heading">Aircraft around home</h2>
+          </div>
+          <div class="radar-legend" aria-label="Radar symbol key">
+            <span><i class="legend-plane" aria-hidden="true"></i> Aircraft</span>
+            <span><i class="legend-military" aria-hidden="true"></i> Confirmed military</span>
+            <span><i class="legend-mlat" aria-hidden="true"></i> MLAT position</span>
+          </div>
+        </div>
+        <p class="radar-help">
+          Home is at the centre. North is at the top. Select a symbol or an aircraft card to match them.
+        </p>
+
+        <div class="radar-frame">
+          <svg id="sky-radar" viewBox="0 0 600 600" role="img" aria-labelledby="radar-title radar-description">
+            <title id="radar-title">Local aircraft sky radar</title>
+            <desc id="radar-description">
+              A top-down graphical view of aircraft by bearing and horizontal distance from the entered postcode.
+              The full accessible details remain in the aircraft list below.
+            </desc>
+            <circle class="radar-field" cx="300" cy="300" r="250"></circle>
+            <circle class="radar-ring" cx="300" cy="300" r="62.5"></circle>
+            <circle class="radar-ring" cx="300" cy="300" r="125"></circle>
+            <circle class="radar-ring" cx="300" cy="300" r="187.5"></circle>
+            <circle class="radar-ring radar-edge" cx="300" cy="300" r="250"></circle>
+            <line class="radar-axis" x1="300" y1="50" x2="300" y2="550"></line>
+            <line class="radar-axis" x1="50" y1="300" x2="550" y2="300"></line>
+            <text class="compass-label" x="300" y="31" text-anchor="middle">N</text>
+            <text class="compass-label" x="575" y="306" text-anchor="middle">E</text>
+            <text class="compass-label" x="300" y="586" text-anchor="middle">S</text>
+            <text class="compass-label" x="25" y="306" text-anchor="middle">W</text>
+            <text class="ring-label" data-ring-label x="306" y="242"></text>
+            <text class="ring-label" data-ring-label x="306" y="179"></text>
+            <text class="ring-label" data-ring-label x="306" y="117"></text>
+            <text class="ring-label" data-ring-label x="306" y="55"></text>
+            <g class="home-marker" aria-hidden="true" transform="translate(300 300)">
+              <circle r="19"></circle>
+              <path d="M-11 0 L0 -10 L11 0 V11 H3 V3 H-3 V11 H-11 Z"></path>
+            </g>
+            <g id="radar-aircraft"></g>
+          </svg>
+          <p id="radar-empty" class="radar-empty">Enter a postcode to place live aircraft on the local sky.</p>
+        </div>
       </section>
 
       <section id="results" class="results" aria-labelledby="results-heading">
@@ -92,13 +140,21 @@
           straight-line distance from the postcode. Weather, aircraft type, buildings and local
           noise can make a real aircraft easier or harder to hear.
         </p>
+        <p>
+          A military label appears only when Airplanes.live marks the aircraft as military.
+          MLAT positions are calculated from several receivers and can be less exact than ADS-B positions.
+          Aircraft may be missing when no usable transponder position is available.
+        </p>
       </section>
     </main>
 
     <footer>
       <p>
-        Live position data from OpenSky Network. UK postcode coordinates from Postcodes.io.
-        Your postcode is used for the request and saved only in this browser.
+        Live ADS-B and MLAT position data from
+        <a href="https://airplanes.live/" rel="external">Airplanes.live</a> and its volunteer receiver community.
+        Used for this free, non-commercial project under its published
+        <a href="https://airplanes.live/api-guide/" rel="external">API conditions</a>.
+        UK postcode coordinates from Postcodes.io. Your postcode is used for the request and saved only in this browser.
       </p>
     </footer>
 
@@ -108,6 +164,10 @@
           <div>
             <p class="aircraft-kind"></p>
             <h3 class="aircraft-callsign"></h3>
+            <div class="identity-badges">
+              <span class="military-badge" hidden>Confirmed military</span>
+              <span class="source-badge"></span>
+            </div>
           </div>
           <span class="audibility-badge"></span>
         </div>
@@ -136,6 +196,18 @@
           <div>
             <dt>Position age</dt>
             <dd class="fact-age"></dd>
+          </div>
+          <div>
+            <dt>Registration</dt>
+            <dd class="fact-registration"></dd>
+          </div>
+          <div>
+            <dt>Aircraft type</dt>
+            <dd class="fact-type"></dd>
+          </div>
+          <div>
+            <dt>Position source</dt>
+            <dd class="fact-source"></dd>
           </div>
         </dl>
       </article>

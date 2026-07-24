@@ -1,9 +1,9 @@
 {
   "name": "over-my-home",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "A small live aircraft-listing app for UK postcodes, powered by OpenSky Network.",
+  "description": "A graphical local-sky instrument for live aircraft near UK postcodes, powered by Airplanes.live.",
   "scripts": {
     "test": "node --test",
     "serve": "python -m http.server 4173"
