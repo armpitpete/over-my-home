@@ -88,6 +88,7 @@ test('a fast powered aircraft can change audibility during one correction interv
 test('projects altitude from vertical rate during the correction interval', () => {
   assert.equal(projectAltitudeFt(5_000, 1_200, 30), 5_600);
   assert.equal(projectAltitudeFt(5_000, -600, 60), 4_400);
+  assert.equal(projectAltitudeFt(null, 1_200, 30), null);
 
   const climbingWithoutTrack = projectAircraftPosition(
     {
