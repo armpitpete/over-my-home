@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify-production:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
       - name: Probe deployed homepage and aircraft API
         shell: bash
@@ -29,11 +29,8 @@ jobs:
               --silent \
               --show-error \
               --location \
-              --retry 5 \
-              --retry-all-errors \
-              --retry-delay 5 \
-              --connect-timeout 15 \
-              --max-time 45 \
+              --connect-timeout 10 \
+              --max-time 25 \
               --dump-header "$headers" \
               --output "$body" \
               --write-out '%{http_code}' \
@@ -51,11 +48,11 @@ jobs:
             fi
           }
 
-          homepage_status="$(request "$BASE_URL/" homepage.html homepage.headers)"
+          homepage_status="$(request "$BASE_URL/" homepage.html homepage.headers || true)"
           echo "=== HOMEPAGE STATUS: $homepage_status ==="
-          cat homepage.headers
+          cat homepage.headers 2>/dev/null || true
           echo "=== HOMEPAGE BODY ==="
-          cat homepage.html
+          cat homepage.html 2>/dev/null || true
           if [ "$homepage_status" != "200" ]; then failures=$((failures + 1)); fi
           require_text 'Graphical local sky' homepage.html
           require_text 'Airplanes.live' homepage.html
@@ -63,11 +60,11 @@ jobs:
           require_text 'id="aircraft-list"' homepage.html
 
           api_url="$BASE_URL/api/aircraft?postcode=YO32%209QU&range=18"
-          api_status="$(request "$api_url" api.json api.headers)"
+          api_status="$(request "$api_url" api.json api.headers || true)"
           echo "=== API STATUS: $api_status ==="
-          cat api.headers
+          cat api.headers 2>/dev/null || true
           echo "=== API BODY ==="
-          cat api.json
+          cat api.json 2>/dev/null || true
           echo
           if [ "$api_status" != "200" ]; then failures=$((failures + 1)); fi
 
@@ -86,12 +83,11 @@ jobs:
           NODE
           fi
 
-          sleep 2
-          second_status="$(request "$api_url" api-second.json api-second.headers)"
+          second_status="$(request "$api_url" api-second.json api-second.headers || true)"
           echo "=== SECOND API STATUS: $second_status ==="
-          cat api-second.headers
+          cat api-second.headers 2>/dev/null || true
           if [ "$second_status" != "200" ]; then failures=$((failures + 1)); fi
-          if grep -Eiq '^x-over-my-home-cache: HIT' api-second.headers; then
+          if grep -Eiq '^x-over-my-home-cache: HIT' api-second.headers 2>/dev/null; then
             echo 'PASS Cloudflare function cache: HIT'
           else
             echo 'FAIL Cloudflare function cache did not report HIT'
