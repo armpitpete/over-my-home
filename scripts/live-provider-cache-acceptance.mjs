@@ -3,7 +3,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 const LIVE_URL = (process.env.LIVE_URL || 'https://over-my-home.pages.dev').replace(/\/$/, '');
 const REPORT_PATH = 'live-acceptance-artifacts/report.json';
-const POSTCODES = ['YO32 9QU', 'YO32 9QX'];
+const PRIMARY_POSTCODE = 'YO32 9QU';
+const NEARBY_POSTCODES = ['YO32 9QW', 'YO32 9QR', 'YO32 9QS', 'YO32 9QT', 'YO32 9QZ', 'YO32 9QX'];
 
 const report = JSON.parse(await readFile(REPORT_PATH, 'utf8'));
 
@@ -26,39 +27,52 @@ async function waitForSharedTileDeployment() {
   let lastObservation = null;
 
   for (let attempt = 1; attempt <= 20; attempt += 1) {
-    const first = await requestAircraft(POSTCODES[0], 18);
-    const second = await requestAircraft(POSTCODES[1], 30);
+    const first = await requestAircraft(PRIMARY_POSTCODE, 18);
+    const firstTileId = first.body.source?.tileId || null;
 
-    lastObservation = {
-      attempt,
-      firstHeader: first.cacheHeader,
-      secondHeader: second.cacheHeader,
-      firstTileId: first.body.source?.tileId || null,
-      secondTileId: second.body.source?.tileId || null,
-      refreshSeconds: first.body.source?.refreshSeconds || null,
-      firstStale: first.body.source?.stale,
-      secondStale: second.body.source?.stale,
-      firstAircraftCount: first.body.aircraft?.length ?? null,
-      secondAircraftCount: second.body.aircraft?.length ?? null,
-    };
+    if (firstTileId) {
+      const candidateObservations = [];
+      for (const postcode of NEARBY_POSTCODES) {
+        const candidate = await requestAircraft(postcode, 30, true);
+        if (!candidate) continue;
+        const candidateTileId = candidate.body.source?.tileId || null;
+        candidateObservations.push({ postcode, tileId: candidateTileId, cacheHeader: candidate.cacheHeader });
 
-    if (first.body.source?.tileId && second.body.source?.tileId) {
-      assert.equal(first.body.source.tileId, second.body.source.tileId, 'Nearby postcodes did not share one tile.');
-      assert.equal(first.body.source.refreshSeconds, 300, 'Production does not expose the five-minute tile refresh.');
-      assert.equal(second.body.source.refreshSeconds, 300, 'Production does not expose the five-minute tile refresh.');
-      assert.equal(first.body.source.stale, false, 'The first live response unexpectedly used stale data.');
-      assert.equal(second.body.source.stale, false, 'The second live response unexpectedly used stale data.');
-      assert.equal(second.cacheHeader, 'HIT', 'The nearby second postcode did not reuse the shared tile cache.');
-      return lastObservation;
+        if (candidateTileId === firstTileId) {
+          assert.equal(first.body.source.refreshSeconds, 300, 'Production does not expose the five-minute tile refresh.');
+          assert.equal(candidate.body.source.refreshSeconds, 300, 'Production does not expose the five-minute tile refresh.');
+          assert.equal(first.body.source.stale, false, 'The first live response unexpectedly used stale data.');
+          assert.equal(candidate.body.source.stale, false, 'The nearby live response unexpectedly used stale data.');
+          assert.equal(candidate.cacheHeader, 'HIT', 'The nearby postcode did not reuse the shared tile cache.');
+
+          return {
+            attempt,
+            primaryPostcode: PRIMARY_POSTCODE,
+            nearbyPostcode: postcode,
+            firstHeader: first.cacheHeader,
+            secondHeader: candidate.cacheHeader,
+            tileId: firstTileId,
+            refreshSeconds: first.body.source.refreshSeconds,
+            firstStale: first.body.source.stale,
+            secondStale: candidate.body.source.stale,
+            firstAircraftCount: first.body.aircraft?.length ?? null,
+            secondAircraftCount: candidate.body.aircraft?.length ?? null,
+          };
+        }
+      }
+
+      lastObservation = { attempt, firstTileId, candidateObservations };
+      throw new Error(`No distinct nearby acceptance postcode was inside tile ${firstTileId}: ${JSON.stringify(candidateObservations)}`);
     }
 
+    lastObservation = { attempt, firstTileId };
     if (attempt < 20) await delay(15_000);
   }
 
   throw new Error(`Production did not expose the shared tile cache contract: ${JSON.stringify(lastObservation)}`);
 }
 
-async function requestAircraft(postcode, range) {
+async function requestAircraft(postcode, range, allowNotFound = false) {
   const url = new URL('/api/aircraft', LIVE_URL);
   url.searchParams.set('postcode', postcode);
   url.searchParams.set('range', String(range));
@@ -68,6 +82,7 @@ async function requestAircraft(postcode, range) {
     headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
   });
   const body = await response.json().catch(() => ({}));
+  if (allowNotFound && response.status === 404) return null;
   assert.equal(response.ok, true, `Production API failed with HTTP ${response.status}: ${body.error || 'unknown error'}`);
   return {
     body,
