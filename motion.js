@@ -1,6 +1,8 @@
 const KNOTS_TO_KM_PER_SECOND = 1.852 / 3600;
 
-export const MAX_PROJECTION_SECONDS = 180;
+export const CORRECTION_INTERVAL_SECONDS = 180;
+export const MAX_INITIAL_AGE_SECONDS = 270;
+export const MAX_PROJECTION_SECONDS = CORRECTION_INTERVAL_SECONDS;
 
 export function projectAircraftPosition(
   aircraft,
@@ -40,7 +42,7 @@ export function projectionElapsedSeconds(
   positionAgeSeconds,
   generatedAt,
   nowMs = Date.now(),
-  maxProjectionSeconds = MAX_PROJECTION_SECONDS,
+  maxProjectionSeconds = MAX_INITIAL_AGE_SECONDS,
 ) {
   const sourceAge = Math.max(0, Number(positionAgeSeconds) || 0);
   const generatedAtMs = Date.parse(generatedAt);
@@ -51,6 +53,36 @@ export function projectionElapsedSeconds(
   return Math.min(
     sourceAge + cacheAge,
     Math.max(0, Number(maxProjectionSeconds) || 0),
+  );
+}
+
+export function createMotionState(aircraft, generatedAt, receivedAtMs = Date.now()) {
+  const initialAgeSeconds = projectionElapsedSeconds(
+    aircraft.positionAgeSeconds,
+    generatedAt,
+    receivedAtMs,
+  );
+
+  return {
+    aircraft: projectAircraftPosition(
+      aircraft,
+      initialAgeSeconds,
+      MAX_INITIAL_AGE_SECONDS,
+    ),
+    receivedAtMs: Number(receivedAtMs),
+  };
+}
+
+export function projectMotionState(motionState, nowMs = Date.now()) {
+  const receivedAtMs = Number(motionState?.receivedAtMs);
+  const elapsedSinceReceipt = Number.isFinite(receivedAtMs)
+    ? Math.max(0, (Number(nowMs) - receivedAtMs) / 1000)
+    : 0;
+
+  return projectAircraftPosition(
+    motionState?.aircraft || {},
+    elapsedSinceReceipt,
+    CORRECTION_INTERVAL_SECONDS,
   );
 }
 
