@@ -55,8 +55,8 @@
 
           <div class="range-row">
             <div>
-              <label for="range">Modelled hearing distance</label>
-              <p class="field-help">Estimate uses aircraft class, motion, altitude and distance—not a microphone.</p>
+              <label for="range">Radar range</label>
+              <p class="field-help">Aircraft beyond this distance are not requested or shown. Sound likelihood is estimated separately.</p>
             </div>
             <output id="range-output" for="range">18 km</output>
           </div>
@@ -178,17 +178,20 @@
           <span class="audibility-badge"></span>
         </div>
 
+        <p class="audibility-reason"><strong>Sound estimate:</strong> <span class="audibility-reason-text"></span></p>
+        <p class="projection-note">Estimated now between live position corrections.</p>
+
         <dl class="aircraft-facts">
           <div>
-            <dt>Straight-line distance</dt>
+            <dt>Estimated straight-line distance</dt>
             <dd class="fact-distance"></dd>
           </div>
           <div>
-            <dt>Altitude</dt>
+            <dt>Estimated altitude</dt>
             <dd class="fact-altitude"></dd>
           </div>
           <div>
-            <dt>Direction from you</dt>
+            <dt>Estimated direction from you</dt>
             <dd class="fact-bearing"></dd>
           </div>
           <div>
