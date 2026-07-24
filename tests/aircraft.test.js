@@ -9,6 +9,11 @@ import {
   radiusKmToNauticalMiles,
   sourceLabel,
 } from '../functions/lib/aircraft.js';
+import {
+  MAX_PROJECTION_SECONDS,
+  projectAircraftPosition,
+  projectionElapsedSeconds,
+} from '../motion.js';
 import { radarPosition, ringLabels } from '../radar.js';
 
 const home = { latitude: 53.99, longitude: -1.05 };
@@ -123,4 +128,42 @@ test('places north and east aircraft correctly on the radar', () => {
 
 test('builds readable radar ring labels', () => {
   assert.deepEqual(ringLabels(20), ['5 km', '10 km', '15 km', '20 km']);
+});
+
+test('projects visual aircraft movement from speed and track', () => {
+  const projected = projectAircraftPosition(
+    {
+      horizontalDistanceKm: 0,
+      bearingDegrees: 0,
+      speedKnots: 360,
+      trackDegrees: 90,
+    },
+    10,
+  );
+
+  assert.equal(Number(projected.horizontalDistanceKm.toFixed(3)), 1.852);
+  assert.equal(Number(projected.bearingDegrees.toFixed(3)), 90);
+});
+
+test('caps visual projection at the three-minute correction interval', () => {
+  const projected = projectAircraftPosition(
+    {
+      horizontalDistanceKm: 0,
+      bearingDegrees: 0,
+      speedKnots: 360,
+      trackDegrees: 90,
+    },
+    600,
+  );
+
+  assert.equal(MAX_PROJECTION_SECONDS, 180);
+  assert.equal(Number(projected.horizontalDistanceKm.toFixed(3)), 33.336);
+});
+
+test('includes provider and cache age when calculating visual projection time', () => {
+  const generatedAt = '2026-07-24T12:00:00.000Z';
+  const nowMs = Date.parse('2026-07-24T12:01:00.000Z');
+
+  assert.equal(projectionElapsedSeconds(5, generatedAt, nowMs), 65);
+  assert.equal(projectionElapsedSeconds(90, generatedAt, nowMs + 120_000), 180);
 });
