@@ -1,4 +1,6 @@
 const KNOTS_TO_KM_PER_SECOND = 1.852 / 3600;
+const MIN_PROJECTED_ALTITUDE_FT = -1_000;
+const MAX_PROJECTED_ALTITUDE_FT = 70_000;
 
 export const CORRECTION_INTERVAL_SECONDS = 180;
 export const MAX_INITIAL_AGE_SECONDS = 270;
@@ -13,13 +15,22 @@ export function projectAircraftPosition(
   const bearingDegrees = normaliseDegrees(aircraft.bearingDegrees);
   const speedKnots = Number(aircraft.speedKnots);
   const trackDegrees = Number(aircraft.trackDegrees);
-  const seconds = Math.min(
-    Math.max(0, Number(elapsedSeconds) || 0),
-    Math.max(0, Number(maxProjectionSeconds) || 0),
+  const seconds = clampElapsedSeconds(elapsedSeconds, maxProjectionSeconds);
+  const projectedAltitudeFt = projectAltitudeFt(
+    aircraft.altitudeFt,
+    aircraft.verticalRateFpm,
+    seconds,
+    maxProjectionSeconds,
   );
+  const baseProjection = {
+    ...aircraft,
+    horizontalDistanceKm: distanceKm,
+    bearingDegrees,
+    altitudeFt: projectedAltitudeFt ?? aircraft.altitudeFt,
+  };
 
   if (!Number.isFinite(speedKnots) || !Number.isFinite(trackDegrees) || seconds === 0) {
-    return { ...aircraft, horizontalDistanceKm: distanceKm, bearingDegrees };
+    return baseProjection;
   }
 
   const bearingRadians = toRadians(bearingDegrees);
@@ -32,10 +43,30 @@ export function projectAircraftPosition(
   northKm += Math.cos(trackRadians) * travelKm;
 
   return {
-    ...aircraft,
+    ...baseProjection,
     horizontalDistanceKm: Math.hypot(eastKm, northKm),
     bearingDegrees: normaliseDegrees(toDegrees(Math.atan2(eastKm, northKm))),
   };
+}
+
+export function projectAltitudeFt(
+  altitudeFt,
+  verticalRateFpm,
+  elapsedSeconds,
+  maxProjectionSeconds = MAX_PROJECTION_SECONDS,
+) {
+  const altitude = Number(altitudeFt);
+  if (!Number.isFinite(altitude)) return null;
+
+  const verticalRate = Number(verticalRateFpm);
+  const seconds = clampElapsedSeconds(elapsedSeconds, maxProjectionSeconds);
+  if (!Number.isFinite(verticalRate) || seconds === 0) return altitude;
+
+  const projected = altitude + verticalRate * seconds / 60;
+  return Math.min(
+    MAX_PROJECTED_ALTITUDE_FT,
+    Math.max(MIN_PROJECTED_ALTITUDE_FT, projected),
+  );
 }
 
 export function projectionElapsedSeconds(
@@ -83,6 +114,13 @@ export function projectMotionState(motionState, nowMs = Date.now()) {
     motionState?.aircraft || {},
     elapsedSinceReceipt,
     CORRECTION_INTERVAL_SECONDS,
+  );
+}
+
+function clampElapsedSeconds(elapsedSeconds, maxProjectionSeconds) {
+  return Math.min(
+    Math.max(0, Number(elapsedSeconds) || 0),
+    Math.max(0, Number(maxProjectionSeconds) || 0),
   );
 }
 
