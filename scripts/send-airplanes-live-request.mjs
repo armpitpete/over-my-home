@@ -50,22 +50,25 @@ const report = {
 
 try {
   await page.goto(CONTACT_URL, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  await page.waitForSelector('form[action*="/contact"], form#ContactForm', {
+    state: 'attached',
+    timeout: 30_000,
+  });
 
-  const name = page.locator('input[name="contact[name]"]').or(page.getByLabel(/^Name$/i)).first();
-  const email = page.locator('input[name="contact[email]"]').or(page.getByLabel(/^Email/i)).first();
-  const comment = page.locator('textarea[name="contact[body]"]').or(page.getByLabel(/^Comment$/i)).first();
+  const name = page.locator('#ContactForm-name:visible, input[name="contact[name]"]:visible').first();
+  const email = page.locator('#ContactForm-email:visible, input[name="contact[email]"]:visible').first();
+  const comment = page.locator('#ContactForm-body:visible, textarea[name="contact[body]"]:visible').first();
 
   await name.waitFor({ state: 'visible', timeout: 30_000 });
+  await email.waitFor({ state: 'visible', timeout: 30_000 });
+  await comment.waitFor({ state: 'visible', timeout: 30_000 });
+
   await name.fill(APPROVED_SENDER);
   await email.fill(APPROVED_EMAIL);
   await comment.fill(message);
 
-  const submit = page
-    .locator('form[action*="/contact"] button[type="submit"], form[action*="/contact"] input[type="submit"]')
-    .or(page.getByRole('button', { name: /^Send$/i }))
-    .first();
-  await submit.waitFor({ state: 'visible', timeout: 30_000 });
-  await submit.click();
+  const form = page.locator('form#ContactForm, form[action*="/contact"]').filter({ has: comment }).first();
+  await form.evaluate((element) => element.requestSubmit());
 
   await page.waitForLoadState('domcontentloaded', { timeout: 60_000 }).catch(() => {});
   await page.waitForTimeout(3_000);
@@ -101,6 +104,16 @@ try {
   report.completedAt = new Date().toISOString();
   report.finalUrl = page.url();
   report.error = error instanceof Error ? error.stack || error.message : String(error);
+  report.formCount = await page.locator('form').count().catch(() => 0);
+  report.visibleInputs = await page.locator('input:visible, textarea:visible, button:visible').evaluateAll((elements) =>
+    elements.slice(0, 30).map((element) => ({
+      tag: element.tagName,
+      id: element.id || null,
+      name: element.getAttribute('name'),
+      type: element.getAttribute('type'),
+      text: element.textContent?.trim().slice(0, 100) || null,
+    })),
+  ).catch(() => []);
   await page.screenshot({ path: 'contact-submission/failure.png', fullPage: true }).catch(() => {});
   process.exitCode = 1;
 } finally {
