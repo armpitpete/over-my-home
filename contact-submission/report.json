@@ -2,9 +2,11 @@
   "contactUrl": "https://store.airplanes.live/pages/contact",
   "senderName": "Merrin W. Dream",
   "senderEmail": "merrin@merrinworld.uk",
-  "startedAt": "2026-07-24T20:20:31.233Z",
+  "startedAt": "2026-07-24T20:23:24.629Z",
   "status": "failed",
-  "completedAt": "2026-07-24T20:21:01.348Z",
+  "completedAt": "2026-07-24T20:23:54.719Z",
   "finalUrl": "https://store.airplanes.live/pages/contact",
-  "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('input[name=\"contact[name]\"]').or(getByLabel(/^Name$/i)).first() to be visible\n\n    at /home/runner/work/over-my-home/over-my-home/scripts/send-airplanes-live-request.mjs:58:14"
+  "error": "page.waitForSelector: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('form[action*=\"/contact\"], form#ContactForm')\n\n    at /home/runner/work/over-my-home/over-my-home/scripts/send-airplanes-live-request.mjs:53:14",
+  "formCount": 0,
+  "visibleInputs": []
 }
