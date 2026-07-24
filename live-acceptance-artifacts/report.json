@@ -1,7 +1,7 @@
 {
   "liveUrl": "https://over-my-home.pages.dev",
   "postcode": "YO32 9QU",
-  "startedAt": "2026-07-24T20:07:30.885Z",
+  "startedAt": "2026-07-24T20:09:14.486Z",
   "deployment": {
     "status": 200,
     "attempts": 1
@@ -9,7 +9,7 @@
   "api": {
     "status": 200,
     "aircraftCount": 0,
-    "generatedAt": "2026-07-24T20:07:31.376Z",
+    "generatedAt": "2026-07-24T20:09:15.220Z",
     "location": {
       "postcode": "YO32 9QU",
       "area": "York"
@@ -211,9 +211,19 @@
     }
   },
   "status": "passed",
-  "completedAt": "2026-07-24T20:07:40.463Z",
+  "completedAt": "2026-07-24T20:09:22.851Z",
   "providerCache": {
-    "status": "failed",
-    "error": "AssertionError [ERR_ASSERTION]: Nearby postcodes did not share one tile.\n+ actual - expected\n\n+ '575:715'\n- '576:715'\n     ^\n\n    at waitForSharedTileDeployment (file:///home/runner/work/over-my-home/over-my-home/scripts/live-provider-cache-acceptance.mjs:46:14)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async file:///home/runner/work/over-my-home/over-my-home/scripts/live-provider-cache-acceptance.mjs:11:18"
+    "status": "passed",
+    "attempt": 1,
+    "primaryPostcode": "YO32 9QU",
+    "nearbyPostcode": "YO32 9QW",
+    "firstHeader": "HIT",
+    "secondHeader": "HIT",
+    "tileId": "575:715",
+    "refreshSeconds": 300,
+    "firstStale": false,
+    "secondStale": false,
+    "firstAircraftCount": 0,
+    "secondAircraftCount": 0
   }
 }
