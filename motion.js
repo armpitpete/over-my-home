@@ -94,13 +94,18 @@ export function createMotionState(aircraft, generatedAt, receivedAtMs = Date.now
     generatedAt,
     receivedAtMs,
   );
+  const projectedAircraft = projectAircraftPosition(
+    aircraft,
+    initialAgeSeconds,
+    MAX_INITIAL_AGE_SECONDS,
+  );
 
   return {
-    aircraft: projectAircraftPosition(
-      aircraft,
-      initialAgeSeconds,
-      MAX_INITIAL_AGE_SECONDS,
-    ),
+    aircraft: {
+      ...projectedAircraft,
+      positionAgeSeconds: initialAgeSeconds,
+    },
+    initialAgeSeconds,
     receivedAtMs: Number(receivedAtMs),
   };
 }
@@ -110,12 +115,17 @@ export function projectMotionState(motionState, nowMs = Date.now()) {
   const elapsedSinceReceipt = Number.isFinite(receivedAtMs)
     ? Math.max(0, (Number(nowMs) - receivedAtMs) / 1000)
     : 0;
-
-  return projectAircraftPosition(
+  const projectedAircraft = projectAircraftPosition(
     motionState?.aircraft || {},
     elapsedSinceReceipt,
     CORRECTION_INTERVAL_SECONDS,
   );
+  const initialAgeSeconds = Math.max(0, Number(motionState?.initialAgeSeconds) || 0);
+
+  return {
+    ...projectedAircraft,
+    positionAgeSeconds: initialAgeSeconds + elapsedSinceReceipt,
+  };
 }
 
 function clampElapsedSeconds(elapsedSeconds, maxProjectionSeconds) {
