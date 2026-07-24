@@ -1,4 +1,4 @@
-name: Live production verification
+name: Deploy and verify production
 
 on:
   pull_request:
@@ -9,32 +9,56 @@ permissions:
   contents: read
 
 jobs:
-  verify-production:
+  deploy-production:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check Cloudflare credentials are available
+        shell: bash
+        run: |
+          token=false
+          account=false
+          [ -n "$CLOUDFLARE_API_TOKEN" ] && token=true
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && account=true
+          echo "CLOUDFLARE_API_TOKEN_PRESENT=$token"
+          echo "CLOUDFLARE_ACCOUNT_ID_PRESENT=$account"
+          [ "$token" = true ] && [ "$account" = true ]
+      - uses: actions/checkout@v4
+        with:
+          ref: c4904465cf4fcae1a3911e77ae3f273c9015d332
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Pages project access
+        run: npx --yes wrangler@latest pages deployment list --project-name=over-my-home --environment=production --json
+      - name: Deploy exact current main to Pages production
+        run: >-
+          npx --yes wrangler@latest pages deploy .
+          --project-name=over-my-home
+          --branch=main
+          --commit-hash=c4904465cf4fcae1a3911e77ae3f273c9015d332
+          --commit-message="Deploy Airplanes.live graphical local sky"
+
+  verify-production:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Probe deployed homepage and aircraft API
         shell: bash
         run: |
           node <<'NODE'
           const base='https://over-my-home.pages.dev';
-          async function get(url){
-            try {
-              const r=await fetch(url,{signal:AbortSignal.timeout(30000)});
-              return {status:r.status,body:await r.text(),cache:r.headers.get('x-over-my-home-cache'),cfRay:r.headers.get('cf-ray')};
-            } catch(e) { return {status:0,body:'',error:e.message}; }
+          async function get(url){try{const r=await fetch(url,{signal:AbortSignal.timeout(30000)});return{status:r.status,body:await r.text(),cache:r.headers.get('x-over-my-home-cache'),cfRay:r.headers.get('cf-ray')}}catch(e){return{status:0,body:'',error:e.message}}}
+          async function check(){
+            const home=await get(base+'/'); const url=base+'/api/aircraft?postcode=YO32%209QU&range=18'; const api=await get(url); const second=await get(url);
+            let data={}; try{data=JSON.parse(api.body)}catch{}
+            return{homepage:{status:home.status,bytes:home.body.length,cfRay:home.cfRay,graphicalSky:home.body.includes('Graphical local sky'),airplanesLive:home.body.includes('Airplanes.live'),confirmedMilitary:home.body.includes('Confirmed military'),accessibleList:home.body.includes('id="aircraft-list"')},api:{status:api.status,cache:api.cache,provider:data?.source?.provider,postcode:data?.location?.postcode,rangeKm:data?.rangeKm,aircraftCount:Array.isArray(data?.aircraft)?data.aircraft.length:null,nonCommercial:data?.source?.nonCommercial,refreshSeconds:data?.source?.refreshSeconds,error:data?.error||api.error},secondApi:{status:second.status,cache:second.cache,error:second.error}};
           }
-          const home=await get(base+'/');
-          const url=base+'/api/aircraft?postcode=YO32%209QU&range=18';
-          const api=await get(url);
-          const second=await get(url);
-          let data={}; try{data=JSON.parse(api.body)}catch{}
-          const result={
-            homepage:{status:home.status,bytes:home.body.length,cfRay:home.cfRay,graphicalSky:home.body.includes('Graphical local sky'),airplanesLive:home.body.includes('Airplanes.live'),confirmedMilitary:home.body.includes('Confirmed military'),accessibleList:home.body.includes('id="aircraft-list"')},
-            api:{status:api.status,cache:api.cache,provider:data?.source?.provider,postcode:data?.location?.postcode,rangeKm:data?.rangeKm,aircraftCount:Array.isArray(data?.aircraft)?data.aircraft.length:null,nonCommercial:data?.source?.nonCommercial,refreshSeconds:data?.source?.refreshSeconds,error:data?.error||api.error},
-            secondApi:{status:second.status,cache:second.cache,error:second.error}
-          };
-          console.log('LIVE_RESULT='+JSON.stringify(result));
-          const ok=result.homepage.status===200&&result.homepage.graphicalSky&&result.homepage.airplanesLive&&result.homepage.confirmedMilitary&&result.homepage.accessibleList&&result.api.status===200&&result.api.provider==='Airplanes.live'&&result.api.postcode==='YO32 9QU'&&result.api.rangeKm===18&&result.api.nonCommercial===true&&result.api.refreshSeconds===300&&result.secondApi.status===200&&result.secondApi.cache==='HIT';
-          if(!ok) process.exitCode=1;
+          let result;
+          for(let attempt=1;attempt<=6;attempt++){result=await check(); console.log(`LIVE_ATTEMPT_${attempt}=`+JSON.stringify(result)); const ok=result.homepage.status===200&&result.homepage.graphicalSky&&result.homepage.airplanesLive&&result.homepage.confirmedMilitary&&result.homepage.accessibleList&&result.api.status===200&&result.api.provider==='Airplanes.live'&&result.api.postcode==='YO32 9QU'&&result.api.rangeKm===18&&result.api.nonCommercial===true&&result.api.refreshSeconds===300&&result.secondApi.status===200&&result.secondApi.cache==='HIT'; if(ok)process.exit(0); await new Promise(r=>setTimeout(r,10000));}
+          process.exit(1);
           NODE
