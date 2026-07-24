@@ -1,23 +1,21 @@
 {
   "liveUrl": "https://over-my-home.pages.dev",
   "postcode": "YO32 9QU",
-  "startedAt": "2026-07-24T20:23:08.173Z",
+  "startedAt": "2026-07-24T20:26:00.282Z",
   "deployment": {
     "status": 200,
     "attempts": 1
   },
   "api": {
     "status": 200,
-    "aircraftCount": 1,
-    "generatedAt": "2026-07-24T20:23:08.503Z",
+    "aircraftCount": 0,
+    "generatedAt": "2026-07-24T20:26:00.706Z",
     "location": {
       "postcode": "YO32 9QU",
       "area": "York"
     },
     "cache": "MISS",
-    "soundStates": {
-      "unlikely": 1
-    }
+    "soundStates": {}
   },
   "viewports": [
     {
@@ -74,16 +72,11 @@
         ]
       },
       "supportDirection": "column",
-      "aircraftCount": 1,
-      "zeroState": false,
+      "aircraftCount": 0,
+      "zeroState": true,
       "labelOverlapCount": 0,
       "motion": {
-        "checked": true,
-        "aircraft": "440c35",
-        "beforeTransform": "translate(428.09 227.81)",
-        "afterTransform": "translate(430.79 230.46)",
-        "beforeAge": "1s",
-        "afterAge": "3s"
+        "checked": false
       }
     },
     {
@@ -140,16 +133,11 @@
         ]
       },
       "supportDirection": "row",
-      "aircraftCount": 1,
-      "zeroState": false,
+      "aircraftCount": 0,
+      "zeroState": true,
       "labelOverlapCount": 0,
       "motion": {
-        "checked": true,
-        "aircraft": "440c35",
-        "beforeTransform": "translate(432.61 232.24)",
-        "afterTransform": "translate(435.31 234.89)",
-        "beforeAge": "4s",
-        "afterAge": "6s"
+        "checked": false
       }
     },
     {
@@ -206,16 +194,11 @@
         ]
       },
       "supportDirection": "row",
-      "aircraftCount": 1,
-      "zeroState": false,
+      "aircraftCount": 0,
+      "zeroState": true,
       "labelOverlapCount": 0,
       "motion": {
-        "checked": true,
-        "aircraft": "440c35",
-        "beforeTransform": "translate(437.21 236.76)",
-        "afterTransform": "translate(439.91 239.41)",
-        "beforeAge": "7s",
-        "afterAge": "9s"
+        "checked": false
       }
     }
   ],
@@ -228,7 +211,7 @@
     }
   },
   "status": "passed",
-  "completedAt": "2026-07-24T20:23:23.942Z",
+  "completedAt": "2026-07-24T20:26:08.639Z",
   "providerCache": {
     "status": "passed",
     "attempt": 1,
@@ -241,6 +224,6 @@
     "firstStale": false,
     "secondStale": false,
     "firstAircraftCount": 0,
-    "secondAircraftCount": 1
+    "secondAircraftCount": 0
   }
 }
