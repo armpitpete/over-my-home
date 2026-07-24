@@ -1,5 +1,5 @@
 import { radarPosition, ringLabels } from './radar.js';
-import { projectAircraftPosition, projectionElapsedSeconds } from './motion.js';
+import { createMotionState, projectMotionState } from './motion.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const form = document.querySelector('#search-form');
@@ -28,7 +28,6 @@ let activePostcode = '';
 let selectedAircraftId = '';
 let lastSuccessfulFetchAt = 0;
 let currentRangeKm = 18;
-let currentGeneratedAt = '';
 const radarMotionItems = new Map();
 
 const savedPostcode = localStorage.getItem('over-my-home.postcode');
@@ -163,19 +162,22 @@ function renderAircraft(data) {
   locationLabel.textContent = `${data.location.postcode} · ${data.location.area}`;
   updatedAt.textContent = `Updated ${formatClock(data.generatedAt)}`;
   currentRangeKm = data.rangeKm;
-  currentGeneratedAt = data.generatedAt;
   updateRadarScale(data.rangeKm);
 
   emptyState.hidden = data.aircraft.length !== 0;
   radarEmpty.hidden = data.aircraft.length !== 0;
 
   const availableIds = new Set();
+  const receivedAtMs = Date.now();
   data.aircraft.forEach((aircraft, index) => {
     const id = aircraft.icao24 || `aircraft-${index}`;
     availableIds.add(id);
     renderAircraftCard(aircraft, id);
     const target = renderRadarTarget(aircraft, id, data.rangeKm);
-    radarMotionItems.set(id, { aircraft, target });
+    radarMotionItems.set(id, {
+      motionState: createMotionState(aircraft, data.generatedAt, receivedAtMs),
+      target,
+    });
   });
 
   if (!availableIds.has(selectedAircraftId)) {
@@ -297,12 +299,8 @@ function stopMotion() {
 function updateRadarMotion() {
   if (document.visibilityState !== 'visible') return;
 
-  for (const { aircraft, target } of radarMotionItems.values()) {
-    const elapsedSeconds = projectionElapsedSeconds(
-      aircraft.positionAgeSeconds,
-      currentGeneratedAt,
-    );
-    const projectedAircraft = projectAircraftPosition(aircraft, elapsedSeconds);
+  for (const { motionState, target } of radarMotionItems.values()) {
+    const projectedAircraft = projectMotionState(motionState);
     const position = radarPosition(projectedAircraft, currentRangeKm);
     target.setAttribute('transform', radarTransform(position));
   }
