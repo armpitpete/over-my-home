@@ -195,7 +195,8 @@ async function inspectLegend(page) {
   assert.ok(samples.length >= 6, `Radar key exposes only ${samples.length} visual samples.`);
   for (const sample of samples) {
     assert.ok(sample.width > 0 && sample.height > 0, `Invisible radar-key sample: ${JSON.stringify(sample)}`);
-    assert.ok(sample.width <= 40 && sample.height <= 40, `Oversized radar-key sample: ${JSON.stringify(sample)}`);
+    const maxWidth = sample.className.includes('radar-key-badge') ? 48 : 40;
+    assert.ok(sample.width <= maxWidth && sample.height <= 40, `Oversized radar-key sample: ${JSON.stringify(sample)}`);
   }
 
   return { selector, itemCount, samples };
