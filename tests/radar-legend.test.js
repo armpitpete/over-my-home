@@ -4,10 +4,12 @@ import { readFile } from 'node:fs/promises';
 
 import {
   RADAR_KEY_LABELS,
-  RADAR_KEY_STYLES,
   radarKeyMarkup,
 } from '../radar-legend-layout.js';
 
+const indexSource = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const cssSource = await readFile(new URL('../radar-legend.css', import.meta.url), 'utf8');
+const layoutSource = await readFile(new URL('../radar-legend-layout.js', import.meta.url), 'utf8');
 const emptyStateSource = await readFile(new URL('../radar-empty-state.js', import.meta.url), 'utf8');
 
 const expectedLabels = [
@@ -25,21 +27,25 @@ test('explains every radar symbol and ring state', () => {
   expectedLabels.forEach((label) => assert.ok(markup.includes(label)));
 });
 
-test('uses large matching samples for likely, possible and selected rings', () => {
+test('gives every generated SVG an intrinsic 32 pixel size', () => {
   const markup = radarKeyMarkup();
-  assert.match(markup, /stroke-width="3"><\/circle>/);
-  assert.match(markup, /stroke-dasharray="5 4"><\/circle>/);
-  assert.match(markup, /stroke="var\(--accent\)" stroke-width="5"><\/circle>/);
+  const svgMatches = markup.match(/<svg width="32" height="32"/g) || [];
+  assert.equal(svgMatches.length, 5);
 });
 
-test('lays the key out as three, two and one responsive columns', () => {
-  assert.match(RADAR_KEY_STYLES, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(RADAR_KEY_STYLES, /max-width: 760px[\s\S]*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(RADAR_KEY_STYLES, /max-width: 520px[\s\S]*grid-template-columns: 1fr/);
-  assert.match(RADAR_KEY_STYLES, /font-size: 0\.92rem/);
-  assert.match(RADAR_KEY_STYLES, /width: 2rem;\n  height: 2rem/);
+test('loads the radar key stylesheet through the page head', () => {
+  assert.match(indexSource, /<link rel="stylesheet" href="\/radar-legend\.css" \/>/);
 });
 
-test('loads the full-width key through the existing page module', () => {
+test('caps key samples at two rem and preserves responsive columns', () => {
+  assert.match(cssSource, /\.radar-key-sample svg \{[\s\S]*width: 2rem;[\s\S]*height: 2rem;[\s\S]*max-width: 2rem;[\s\S]*max-height: 2rem;/);
+  assert.match(cssSource, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(cssSource, /max-width: 760px[\s\S]*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(cssSource, /max-width: 520px[\s\S]*grid-template-columns: 1fr/);
+});
+
+test('does not rely on runtime-injected style rules', () => {
+  assert.doesNotMatch(layoutSource, /createElement\('style'\)/);
+  assert.doesNotMatch(layoutSource, /RADAR_KEY_STYLES/);
   assert.match(emptyStateSource, /import '\.\/radar-legend-layout\.js';/);
 });
