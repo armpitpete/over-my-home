@@ -7,7 +7,9 @@ const styles = await readFile(new URL('../support.css', import.meta.url), 'utf8'
 
 test('shows a clear Ko-fi support prompt in the footer', () => {
   assert.match(page, /If you find Over My Home useful,/);
-  assert.match(page, />Support it on Ko-fi\s*<span class="new-tab-note">\(opens in a new tab\)<\/span><\/a>/);
+  assert.match(page, />Support it on Ko-fi<\/a>\s*<\/p>/);
+  assert.doesNotMatch(page, /opens in a new tab/);
+  assert.doesNotMatch(page, /Support it on Ko-fi<\/a>\./);
   assert.match(page, /href="https:\/\/ko-fi\.com\/merrindream"/);
 });
 
@@ -19,6 +21,7 @@ test('opens Ko-fi safely in a new tab without replacing the aircraft view', () =
 test('loads a bounded responsive support style', () => {
   assert.match(page, /href="\/support\.css"/);
   assert.match(styles, /\.support-prompt\s*\{/);
+  assert.doesNotMatch(styles, /\.new-tab-note/);
   assert.match(styles, /@media \(max-width: 600px\)/);
   assert.match(styles, /flex-direction: column/);
 });

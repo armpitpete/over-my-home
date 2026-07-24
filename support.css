@@ -15,15 +15,8 @@
 .support-link {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
   flex: none;
   font-weight: 800;
-}
-
-.new-tab-note {
-  color: var(--muted);
-  font-size: 0.78em;
-  font-weight: 600;
 }
 
 .data-attribution {
