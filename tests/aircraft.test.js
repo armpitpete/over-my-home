@@ -77,6 +77,18 @@ test('parses a nearby Airplanes.live aircraft', () => {
   assert.ok(result.slantDistanceKm < 18);
 });
 
+test('keeps audibility classification independent of radar range', () => {
+  const record = aircraft({ lat: 54.06, lon: -1.05, alt_baro: 1000 });
+  const atTenKm = parseAirplanesAircraft(record, home, 10);
+  const atThirtyKm = parseAirplanesAircraft(record, home, 30);
+
+  assert.ok(atTenKm);
+  assert.ok(atThirtyKm);
+  assert.equal(atTenKm.audibility, 'likely');
+  assert.equal(atThirtyKm.audibility, 'likely');
+  assert.equal(atTenKm.audibility, atThirtyKm.audibility);
+});
+
 test('identifies confirmed military aircraft from dbFlags', () => {
   const result = parseAirplanesAircraft(aircraft({ dbFlags: 1, type: 'mlat' }), home, 18);
   assert.ok(result);
