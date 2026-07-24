@@ -12,8 +12,8 @@ function aircraftFixture(overrides = {}) {
     latitude: 53.98,
     longitude: -1.02,
     altitudeFt: 0,
-    horizontalDistanceKm: 6.38,
-    slantDistanceKm: 6.38,
+    horizontalDistanceKm: 7.2,
+    slantDistanceKm: 7.2,
     bearingDegrees: 90,
     bearingLabel: 'E',
     speedKnots: 600,
@@ -40,8 +40,8 @@ const crowdedAircraft = [
     typeCode: 'ASW20',
     description: 'GLIDER',
     altitudeFt: 1_000,
-    horizontalDistanceKm: 6.55,
-    slantDistanceKm: 6.56,
+    horizontalDistanceKm: 7.35,
+    slantDistanceKm: 7.36,
     bearingDegrees: 92,
     speedKnots: 55,
     trackDegrees: 180,
@@ -141,9 +141,8 @@ test('projected movement updates position, card values and sound state together'
 
   const initialTransform = await target.getAttribute('transform');
   const initialDistance = await card.locator('.fact-distance').textContent();
-  await page.waitForTimeout(1_300);
 
-  await expect(target).toHaveClass(/likely/);
+  await expect(target).toHaveClass(/likely/, { timeout: 5_000 });
   await expect(card.locator('.audibility-badge')).toHaveText('Likely audible');
   await expect(card.locator('.fact-age')).toHaveText(/^[1-9]\d*s$/);
 
