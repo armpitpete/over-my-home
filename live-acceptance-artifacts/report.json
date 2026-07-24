@@ -1,7 +1,7 @@
 {
   "liveUrl": "https://over-my-home.pages.dev",
   "postcode": "YO32 9QU",
-  "startedAt": "2026-07-24T20:28:10.641Z",
+  "startedAt": "2026-07-24T20:30:20.134Z",
   "deployment": {
     "status": 200,
     "attempts": 1
@@ -9,17 +9,221 @@
   "api": {
     "status": 200,
     "aircraftCount": 0,
-    "generatedAt": "2026-07-24T20:17:04.628Z",
+    "generatedAt": "2026-07-24T20:30:20.410Z",
     "location": {
       "postcode": "YO32 9QU",
       "area": "York"
     },
-    "cache": "STALE",
+    "cache": "MISS",
     "soundStates": {}
   },
-  "viewports": [],
-  "deterministic": {},
-  "status": "failed",
-  "completedAt": "2026-07-24T20:28:42.057Z",
-  "error": "page.waitForFunction: Timeout 30000ms exceeded.\n    at search (/home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:227:14)\n    at async inspectViewport (/home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:107:18)\n    at async file:///home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:32:29"
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "overflow": 0,
+      "legend": {
+        "selector": ".radar-key",
+        "itemCount": 7,
+        "samples": [
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 43.421875,
+            "height": 23.1875,
+            "tag": "SPAN",
+            "className": "radar-key-badge"
+          }
+        ]
+      },
+      "supportDirection": "column",
+      "aircraftCount": 0,
+      "zeroState": true,
+      "labelOverlapCount": 0,
+      "motion": {
+        "checked": false
+      }
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024,
+      "overflow": 0,
+      "legend": {
+        "selector": ".radar-key",
+        "itemCount": 7,
+        "samples": [
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 43.421875,
+            "height": 23.1875,
+            "tag": "SPAN",
+            "className": "radar-key-badge"
+          }
+        ]
+      },
+      "supportDirection": "row",
+      "aircraftCount": 0,
+      "zeroState": true,
+      "labelOverlapCount": 0,
+      "motion": {
+        "checked": false
+      }
+    },
+    {
+      "name": "desktop",
+      "width": 1020,
+      "height": 900,
+      "overflow": 0,
+      "legend": {
+        "selector": ".radar-key",
+        "itemCount": 7,
+        "samples": [
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 43.421875,
+            "height": 23.1875,
+            "tag": "SPAN",
+            "className": "radar-key-badge"
+          }
+        ]
+      },
+      "supportDirection": "row",
+      "aircraftCount": 0,
+      "zeroState": true,
+      "labelOverlapCount": 0,
+      "motion": {
+        "checked": false
+      }
+    }
+  ],
+  "deterministic": {
+    "soundTransition": {
+      "passed": true
+    },
+    "zeroAircraft": {
+      "passed": true
+    }
+  },
+  "status": "passed",
+  "completedAt": "2026-07-24T20:30:27.956Z",
+  "providerCache": {
+    "status": "passed",
+    "attempt": 1,
+    "primaryPostcode": "YO32 9QU",
+    "nearbyPostcode": "YO32 9QW",
+    "firstHeader": "HIT",
+    "secondHeader": "HIT",
+    "tileId": "575:715",
+    "refreshSeconds": 300,
+    "firstStale": false,
+    "secondStale": false,
+    "firstAircraftCount": 0,
+    "secondAircraftCount": 0
+  }
 }
