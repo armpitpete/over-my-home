@@ -1,0 +1,13 @@
+.radar-target.unlikely .radar-pulse {
+  fill: transparent;
+  stroke: #7f91a8;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 1 5;
+  opacity: 0.82;
+}
+
+.audibility-badge.unlikely {
+  background: rgba(127, 145, 168, 0.12);
+  color: #b8c3d0;
+}
