@@ -1,6 +1,7 @@
 import { formatRadarAltitude, radarBearingLabel, radarPosition, ringLabels } from './radar.js';
 import { createMotionState, projectMotionState } from './motion.js';
 import { audibilityForPosition, audibilityLabel } from './audibility.js';
+import { cardProjection } from './presentation.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const form = document.querySelector('#search-form');
@@ -167,13 +168,13 @@ function renderAircraft(data) {
   data.aircraft.forEach((aircraft, index) => {
     const id = aircraft.icao24 || `aircraft-${index}`;
     availableIds.add(id);
-    const audibilityBadge = renderAircraftCard(aircraft, id);
+    const cardView = renderAircraftCard(aircraft, id);
     const { target, altitudeLabel } = renderRadarTarget(aircraft, id, data.rangeKm);
     radarMotionItems.set(id, {
       motionState: createMotionState(aircraft, data.generatedAt, receivedAtMs),
       target,
       altitudeLabel,
-      audibilityBadge,
+      cardView,
     });
   });
 
@@ -190,7 +191,6 @@ function renderAircraftCard(aircraft, id) {
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
   card.setAttribute('aria-pressed', 'false');
-  card.setAttribute('aria-label', `Select ${displayName(aircraft)} on the local sky radar`);
 
   card.querySelector('.aircraft-kind').textContent = aircraft.categoryLabel;
   card.querySelector('.aircraft-callsign').textContent = displayName(aircraft);
@@ -202,19 +202,21 @@ function renderAircraftCard(aircraft, id) {
   sourceBadge.textContent = aircraft.sourceLabel;
   sourceBadge.classList.toggle('mlat', aircraft.source === 'mlat');
 
-  const audibilityBadge = card.querySelector('.audibility-badge');
-  setAudibilityState(null, audibilityBadge, aircraft.audibility);
+  const cardView = {
+    card,
+    audibilityBadge: card.querySelector('.audibility-badge'),
+    audibilityReason: card.querySelector('.audibility-reason-text'),
+    distance: card.querySelector('.fact-distance'),
+    altitude: card.querySelector('.fact-altitude'),
+    bearing: card.querySelector('.fact-bearing'),
+    motion: card.querySelector('.fact-motion'),
+    age: card.querySelector('.fact-age'),
+  };
+  updateProjectedCard(cardView, aircraft, aircraft.audibility);
 
-  card.querySelector('.fact-distance').textContent = `${aircraft.slantDistanceKm.toFixed(1)} km`;
-  card.querySelector('.fact-altitude').textContent = aircraft.altitudeFt == null
-    ? 'Not reported'
-    : `${Math.round(aircraft.altitudeFt).toLocaleString('en-GB')} ft`;
-  card.querySelector('.fact-bearing').textContent = `${aircraft.bearingLabel} · ${aircraft.horizontalDistanceKm.toFixed(1)} km away`;
-  card.querySelector('.fact-motion').textContent = aircraft.motionLabel;
   card.querySelector('.fact-speed').textContent = aircraft.speedKnots == null
     ? 'Not reported'
     : `${Math.round(aircraft.speedKnots)} kt`;
-  card.querySelector('.fact-age').textContent = `${aircraft.positionAgeSeconds}s`;
   card.querySelector('.fact-registration').textContent = aircraft.registration || 'Not reported';
   card.querySelector('.fact-type').textContent = [aircraft.typeCode, aircraft.description]
     .filter(Boolean)
@@ -229,7 +231,7 @@ function renderAircraftCard(aircraft, id) {
     }
   });
   aircraftList.append(card);
-  return audibilityBadge;
+  return cardView;
 }
 
 function renderRadarTarget(aircraft, id, rangeKm) {
@@ -304,15 +306,31 @@ function stopMotion() {
 function updateRadarMotion() {
   if (document.visibilityState !== 'visible') return;
 
-  for (const { motionState, target, altitudeLabel, audibilityBadge } of radarMotionItems.values()) {
+  for (const { motionState, target, altitudeLabel, cardView } of radarMotionItems.values()) {
     const projectedAircraft = projectMotionState(motionState);
     const position = radarPosition(projectedAircraft, currentRangeKm);
     const audibility = audibilityForPosition(projectedAircraft);
     target.setAttribute('transform', radarTransform(position));
     target.setAttribute('aria-label', radarTargetAriaLabel(projectedAircraft));
     altitudeLabel.textContent = formatRadarAltitude(projectedAircraft.altitudeFt);
-    setAudibilityState(target, audibilityBadge, audibility);
+    setAudibilityState(target, null, audibility);
+    updateProjectedCard(cardView, projectedAircraft, audibility);
   }
+}
+
+function updateProjectedCard(cardView, aircraft, audibility) {
+  const projection = cardProjection(aircraft, audibility);
+  setAudibilityState(null, cardView.audibilityBadge, audibility);
+  cardView.audibilityReason.textContent = projection.reasonText;
+  cardView.distance.textContent = projection.distanceText;
+  cardView.altitude.textContent = projection.altitudeText;
+  cardView.bearing.textContent = projection.bearingText;
+  cardView.motion.textContent = projection.movementText;
+  cardView.age.textContent = projection.positionAgeText;
+  cardView.card.setAttribute(
+    'aria-label',
+    `Select ${displayName(aircraft)} on the local sky radar. ${projection.audibilityText}.`,
+  );
 }
 
 function setAudibilityState(target, badge, audibility) {
