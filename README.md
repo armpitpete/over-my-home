@@ -14,7 +14,7 @@ A small, mobile-first local-sky instrument that shows live aircraft which may be
 8. Projects radar symbols once per second from reported speed and track, then corrects them with real data every three minutes.
 9. Pauses movement and automatic requests while the browser tab is hidden.
 
-The accessible aircraft cards remain snapshots of the last real provider response. Only the graphical radar positions are extrapolated between corrections. The one-second movement is disabled when a visitor requests reduced motion.
+The accessible aircraft cards remain snapshots of the last real provider response. Only the graphical radar positions are extrapolated between corrections. Radar movement represents functional position data, so it continues when the visitor requests reduced decorative motion.
 
 The result is an **audibility estimate**, not a measured claim. Aircraft type, engine power, weather, buildings and background noise all affect what a person can hear.
 
