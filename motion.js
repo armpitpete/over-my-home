@@ -92,11 +92,7 @@ export function projectMotionState(motionState, nowMs = Date.now()) {
 }
 
 function allowFunctionalRadarMotion() {
-  if (
-    typeof window === 'undefined' ||
-    typeof window.matchMedia !== 'function' ||
-    typeof queueMicrotask !== 'function'
-  ) {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return;
   }
 
@@ -113,12 +109,6 @@ function allowFunctionalRadarMotion() {
       },
     });
   };
-
-  // Dependency modules execute before app.js. Restore the browser API after
-  // app.js has captured its media-query object, keeping this override local.
-  queueMicrotask(() => {
-    window.matchMedia = originalMatchMedia;
-  });
 }
 
 function normaliseDegrees(value) {
