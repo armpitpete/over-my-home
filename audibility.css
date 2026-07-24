@@ -35,8 +35,22 @@
   fill: #fff2a8;
 }
 
+#sky-radar.labels-decluttered .radar-target-label {
+  font-size: 10px;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+}
+
+#sky-radar.labels-decluttered .radar-target-altitude {
+  display: none;
+}
+
 @media (max-width: 460px) {
   .radar-target-altitude {
     font-size: 10px;
+  }
+
+  #sky-radar.labels-decluttered .radar-target-label {
+    font-size: 10.5px;
   }
 }
