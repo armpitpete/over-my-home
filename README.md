@@ -1,22 +1,32 @@
 # Over My Home
 
-A small, mobile-first web app that lists live aircraft which may be audible near a UK postcode.
+A small, mobile-first local-sky instrument that shows live aircraft which may be audible near a UK postcode.
 
 ## What it does
 
 1. Converts a UK postcode to an approximate latitude and longitude with Postcodes.io.
-2. Requests current aircraft state vectors in a small OpenSky Network bounding box.
-3. Calculates horizontal and straight-line distance using the reported aircraft altitude.
-4. Lists aircraft inside the selected modelled hearing distance.
-5. Refreshes every 15 seconds while the page is open.
+2. Requests current nearby aircraft from the Airplanes.live point-and-radius API.
+3. Calculates horizontal and straight-line distance using the reported altitude.
+4. Places qualifying aircraft on an SVG sky radar centred on the postcode.
+5. Preserves a complete accessible aircraft list beneath the graphic.
+6. Identifies an aircraft as military only when the provider supplies the military database flag.
+7. Labels ADS-B, MLAT and other position sources without treating them as equally exact.
+8. Refreshes every 60 seconds while the page is open.
 
 The result is an **audibility estimate**, not a measured claim. Aircraft type, engine power, weather, buildings and background noise all affect what a person can hear.
+
+## Data-use boundary
+
+Over My Home is a free, non-commercial project. Its Airplanes.live integration must not be used for a paid product, advertising product, subscription service or other commercial purpose without obtaining suitable permission from Airplanes.live.
+
+Airplanes.live provides no uptime guarantee. Its public API may change, become restricted or require contributor access later.
 
 ## Stack
 
 - Static HTML, CSS and JavaScript
+- Responsive SVG sky radar
 - Cloudflare Pages Functions
-- OpenSky Network REST API
+- Airplanes.live REST API
 - Postcodes.io
 - Node's built-in test runner
 
@@ -44,20 +54,16 @@ npx wrangler pages dev .
 
 ## Deploy to Cloudflare Pages
 
-Create a Pages project from this repository with:
+The production Pages project is connected to `armpitpete/over-my-home`.
 
-- Build command: leave blank
+- Production branch: `main`
+- Framework preset: `None`
+- Build command: `exit 0`
 - Build output directory: `.`
+- Root directory: blank
 - Functions directory: detected automatically from `functions/`
 
-### Recommended OpenSky authentication
-
-OpenSky supports OAuth2 client credentials. Add these encrypted environment variables in Cloudflare Pages:
-
-- `OPENSKY_CLIENT_ID`
-- `OPENSKY_CLIENT_SECRET`
-
-The app falls back to anonymous OpenSky access when the variables are absent, but anonymous access has a much smaller daily credit allowance.
+No environment variables or provider credentials are required for the current Airplanes.live integration.
 
 ## Privacy
 
@@ -68,13 +74,13 @@ The app falls back to anonymous OpenSky access when the variables are absent, bu
 
 ## Current boundary
 
-Version 0.1 intentionally does not include:
+Version 0.2 intentionally does not include:
 
-- a map;
+- a conventional street map;
 - flight origin or destination claims;
 - aircraft photographs;
 - sound recording or microphone access;
 - notifications;
-- stored location histories.
-
-Those features should be considered only after the live list is reliable.
+- stored location histories;
+- guessed military status;
+- commercial use.

@@ -1,4 +1,6 @@
 const EARTH_RADIUS_KM = 6371.0088;
+const FEET_TO_KM = 0.0003048;
+const KNOTS_TO_METRES_PER_SECOND = 0.514444;
 
 export function normalisePostcode(value) {
   const compact = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
@@ -12,16 +14,8 @@ export function clampRange(value) {
   return Math.min(30, Math.max(8, Math.round(parsed)));
 }
 
-export function boundingBox(latitude, longitude, radiusKm) {
-  const latitudeDelta = radiusKm / 111.32;
-  const longitudeScale = Math.max(0.15, Math.cos(toRadians(latitude)));
-  const longitudeDelta = radiusKm / (111.32 * longitudeScale);
-  return {
-    lamin: latitude - latitudeDelta,
-    lomin: longitude - longitudeDelta,
-    lamax: latitude + latitudeDelta,
-    lomax: longitude + longitudeDelta,
-  };
+export function radiusKmToNauticalMiles(radiusKm) {
+  return Math.max(1, Math.ceil(Number(radiusKm) / 1.852));
 }
 
 export function haversineKm(lat1, lon1, lat2, lon2) {
@@ -47,80 +41,94 @@ export function bearingLabel(degrees) {
   return labels[Math.round(degrees / 45) % 8];
 }
 
-export function parseStateVector(state, home, rangeKm, nowSeconds) {
-  if (!Array.isArray(state)) return null;
-  const [
-    icao24,
-    rawCallsign,
-    originCountry,
-    timePosition,
-    lastContact,
-    longitude,
-    latitude,
-    baroAltitude,
-    onGround,
-    velocity,
-    trueTrack,
-    verticalRate,
-    sensors,
-    geoAltitude,
-    squawk,
-    spi,
-    positionSource,
-    category,
-  ] = state;
+export function parseAirplanesAircraft(record, home, rangeKm) {
+  if (!record || typeof record !== 'object') return null;
+  if (record.alt_baro === 'ground') return null;
 
-  if (onGround || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  const position = choosePosition(record);
+  if (!position) return null;
 
-  const altitudeM = firstFinite(geoAltitude, baroAltitude, 0);
-  const horizontalDistanceKm = haversineKm(home.latitude, home.longitude, latitude, longitude);
-  const slantDistanceKm = Math.hypot(horizontalDistanceKm, Math.max(0, altitudeM) / 1000);
+  const positionAgeSeconds = Math.max(0, Math.round(position.age));
+  if (positionAgeSeconds > 90) return null;
+
+  const altitudeFt = firstFinite(
+    numberOrNull(record.alt_geom),
+    numberOrNull(record.alt_baro),
+  );
+  const horizontalDistanceKm = haversineKm(
+    home.latitude,
+    home.longitude,
+    position.latitude,
+    position.longitude,
+  );
+  const slantDistanceKm = Math.hypot(
+    horizontalDistanceKm,
+    Math.max(0, altitudeFt || 0) * FEET_TO_KM,
+  );
   if (slantDistanceKm > rangeKm) return null;
 
-  const bearing = bearingDegrees(home.latitude, home.longitude, latitude, longitude);
-  const approach = approachAssessment({
-    home,
-    aircraft: { latitude, longitude, velocity, trueTrack },
-  });
+  const bearing = bearingDegrees(
+    home.latitude,
+    home.longitude,
+    position.latitude,
+    position.longitude,
+  );
+  const speedKnots = numberOrNull(record.gs);
+  const trackDegrees = numberOrNull(record.track);
+  const military = (Number(record.dbFlags) & 1) === 1;
 
   return {
-    icao24: String(icao24 || ''),
-    callsign: String(rawCallsign || '').trim() || null,
-    originCountry: originCountry || null,
-    latitude,
-    longitude,
-    altitudeFt: altitudeM > 0 ? altitudeM * 3.28084 : null,
+    icao24: String(record.hex || '').trim(),
+    callsign: cleanString(record.flight),
+    registration: cleanString(record.r),
+    typeCode: cleanString(record.t),
+    description: cleanString(record.desc),
+    latitude: position.latitude,
+    longitude: position.longitude,
+    altitudeFt,
     horizontalDistanceKm,
     slantDistanceKm,
     bearingDegrees: bearing,
     bearingLabel: bearingLabel(bearing),
-    speedKnots: Number.isFinite(velocity) ? velocity * 1.943844 : null,
-    trackDegrees: Number.isFinite(trueTrack) ? trueTrack : null,
-    verticalRateMps: Number.isFinite(verticalRate) ? verticalRate : null,
-    positionAgeSeconds: Math.max(0, Math.round(nowSeconds - firstFinite(timePosition, lastContact, nowSeconds))),
-    motionLabel: approach,
-    category: Number.isInteger(category) ? category : 0,
-    categoryLabel: categoryLabel(category),
+    speedKnots,
+    trackDegrees,
+    verticalRateFpm: firstFinite(
+      numberOrNull(record.geom_rate),
+      numberOrNull(record.baro_rate),
+    ),
+    positionAgeSeconds,
+    motionLabel: approachAssessment({
+      home,
+      aircraft: {
+        latitude: position.latitude,
+        longitude: position.longitude,
+        speedKnots,
+        trackDegrees,
+      },
+    }),
+    category: cleanString(record.category),
+    categoryLabel: military ? 'Military aircraft' : categoryLabel(record.category),
     audibility: slantDistanceKm <= Math.min(12, rangeKm * 0.7) ? 'likely' : 'possible',
-    source: positionSource,
-    squawk,
-    sensors,
-    spi,
+    source: cleanString(record.type) || 'unknown',
+    sourceLabel: sourceLabel(record.type),
+    military,
+    squawk: cleanString(record.squawk),
+    emergency: cleanString(record.emergency),
   };
 }
 
 export function approachAssessment({ home, aircraft }) {
-  if (!Number.isFinite(aircraft.velocity) || !Number.isFinite(aircraft.trueTrack)) {
+  if (!Number.isFinite(aircraft.speedKnots) || !Number.isFinite(aircraft.trackDegrees)) {
     return 'Direction unknown';
   }
 
   const current = haversineKm(home.latitude, home.longitude, aircraft.latitude, aircraft.longitude);
   const seconds = 45;
-  const distanceKm = aircraft.velocity * seconds / 1000;
+  const distanceKm = aircraft.speedKnots * KNOTS_TO_METRES_PER_SECOND * seconds / 1000;
   const projected = destinationPoint(
     aircraft.latitude,
     aircraft.longitude,
-    aircraft.trueTrack,
+    aircraft.trackDegrees,
     distanceKm,
   );
   const projectedDistance = haversineKm(home.latitude, home.longitude, projected.latitude, projected.longitude);
@@ -133,19 +141,56 @@ export function approachAssessment({ home, aircraft }) {
 
 export function categoryLabel(category) {
   const labels = {
-    2: 'Light aircraft',
-    3: 'Small aircraft',
-    4: 'Large aircraft',
-    5: 'High-vortex aircraft',
-    6: 'Heavy aircraft',
-    7: 'High-performance aircraft',
-    8: 'Helicopter or rotorcraft',
-    9: 'Glider',
-    10: 'Lighter-than-air craft',
-    12: 'Ultralight aircraft',
-    14: 'Unmanned aircraft',
+    A1: 'Light aircraft',
+    A2: 'Small aircraft',
+    A3: 'Large aircraft',
+    A4: 'High-vortex aircraft',
+    A5: 'Heavy aircraft',
+    A6: 'High-performance aircraft',
+    A7: 'Helicopter or rotorcraft',
+    B1: 'Glider',
+    B2: 'Lighter-than-air craft',
+    B4: 'Ultralight aircraft',
+    B6: 'Unmanned aircraft',
   };
-  return labels[category] || 'Aircraft';
+  return labels[String(category || '').toUpperCase()] || 'Aircraft';
+}
+
+export function sourceLabel(source) {
+  const labels = {
+    adsb_icao: 'ADS-B',
+    adsb_icao_nt: 'ADS-B',
+    adsb_other: 'ADS-B',
+    adsr_icao: 'ADS-R',
+    adsr_other: 'ADS-R',
+    mlat: 'MLAT',
+    tisb_icao: 'TIS-B',
+    tisb_other: 'TIS-B',
+    tisb_trackfile: 'TIS-B',
+    adsc: 'ADS-C',
+    mode_s: 'Mode S',
+    other: 'Other source',
+  };
+  return labels[String(source || '').toLowerCase()] || 'Source unknown';
+}
+
+function choosePosition(record) {
+  const directLat = numberOrNull(record.lat);
+  const directLon = numberOrNull(record.lon);
+  const directAge = firstFinite(numberOrNull(record.seen_pos), numberOrNull(record.seen), 0);
+  if (directLat !== null && directLon !== null) {
+    return { latitude: directLat, longitude: directLon, age: directAge };
+  }
+
+  const fallback = record.lastPosition;
+  if (!fallback || typeof fallback !== 'object') return null;
+  const fallbackLat = numberOrNull(fallback.lat);
+  const fallbackLon = numberOrNull(fallback.lon);
+  const fallbackAge = numberOrNull(fallback.seen_pos);
+  if (fallbackLat === null || fallbackLon === null || fallbackAge === null || fallbackAge > 60) {
+    return null;
+  }
+  return { latitude: fallbackLat, longitude: fallbackLon, age: fallbackAge };
 }
 
 function destinationPoint(latitude, longitude, bearing, distanceKm) {
@@ -171,8 +216,18 @@ function destinationPoint(latitude, longitude, bearing, distanceKm) {
   };
 }
 
+function numberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function firstFinite(...values) {
   return values.find((value) => Number.isFinite(value));
+}
+
+function cleanString(value) {
+  const result = String(value || '').trim();
+  return result || null;
 }
 
 function toRadians(value) {

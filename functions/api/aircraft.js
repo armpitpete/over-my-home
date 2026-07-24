@@ -1,17 +1,13 @@
 import {
-  boundingBox,
   clampRange,
   normalisePostcode,
-  parseStateVector,
+  parseAirplanesAircraft,
+  radiusKmToNauticalMiles,
 } from '../lib/aircraft.js';
 
-const TOKEN_URL = 'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token';
-const OPENSKY_URL = 'https://opensky-network.org/api/states/all';
+const AIRPLANES_URL = 'https://api.airplanes.live/v2/point';
 const POSTCODE_URL = 'https://api.postcodes.io/postcodes';
-const CACHE_TTL_MS = 9_000;
-
-let tokenCache = { token: null, expiresAt: 0 };
-const responseCache = new Map();
+const CACHE_TTL_SECONDS = 45;
 
 export async function onRequestGet(context) {
   const url = new URL(context.request.url);
@@ -22,20 +18,20 @@ export async function onRequestGet(context) {
     return json({ error: 'Enter a valid UK postcode.' }, 400);
   }
 
-  const cacheKey = `${postcode}:${rangeKm}`;
-  const cached = responseCache.get(cacheKey);
-  if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
-    return json(cached.body, 200, { 'X-Over-My-Home-Cache': 'HIT' });
-  }
-
   try {
     const location = await lookupPostcode(postcode);
-    const box = boundingBox(location.latitude, location.longitude, Math.min(40, rangeKm + 12));
-    const { payload, authenticated, rateLimitRemaining } = await loadOpenSky(box, context.env);
-    const nowSeconds = Number(payload.time) || Math.floor(Date.now() / 1000);
+    const cacheKey = createCacheKey(context.request.url, location, rangeKm);
+    const cache = typeof caches === 'undefined' ? null : caches.default;
+    const cached = cache ? await cache.match(cacheKey) : null;
 
-    const aircraft = (payload.states || [])
-      .map((state) => parseStateVector(state, location, rangeKm, nowSeconds))
+    if (cached) {
+      const cachedBody = await cached.json();
+      return json(cachedBody, 200, { 'X-Over-My-Home-Cache': 'HIT' });
+    }
+
+    const payload = await loadAirplanes(location, rangeKm);
+    const aircraft = (payload.ac || [])
+      .map((record) => parseAirplanesAircraft(record, location, rangeKm))
       .filter(Boolean)
       .sort((a, b) => a.slantDistanceKm - b.slantDistanceKm);
 
@@ -48,15 +44,25 @@ export async function onRequestGet(context) {
       rangeKm,
       aircraft,
       source: {
-        provider: 'OpenSky Network',
-        authenticated,
-        rateLimitRemaining,
+        provider: 'Airplanes.live',
+        nonCommercial: true,
+        refreshSeconds: 60,
       },
     };
 
-    responseCache.set(cacheKey, { createdAt: Date.now(), body });
-    pruneCache();
-    return json(body);
+    if (cache) {
+      const cacheResponse = new Response(JSON.stringify(body), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`,
+        },
+      });
+      const cacheWrite = cache.put(cacheKey, cacheResponse);
+      if (typeof context.waitUntil === 'function') context.waitUntil(cacheWrite);
+      else await cacheWrite;
+    }
+
+    return json(body, 200, { 'X-Over-My-Home-Cache': 'MISS' });
   } catch (error) {
     const status = Number(error.status) || 502;
     return json(
@@ -95,88 +101,47 @@ async function lookupPostcode(postcode) {
   };
 }
 
-async function loadOpenSky(box, env) {
-  const params = new URLSearchParams({
-    lamin: box.lamin.toFixed(5),
-    lomin: box.lomin.toFixed(5),
-    lamax: box.lamax.toFixed(5),
-    lomax: box.lomax.toFixed(5),
-    extended: '1',
+async function loadAirplanes(location, rangeKm) {
+  const radiusNm = radiusKmToNauticalMiles(rangeKm);
+  const endpoint = [
+    AIRPLANES_URL,
+    location.latitude.toFixed(5),
+    location.longitude.toFixed(5),
+    radiusNm,
+  ].join('/');
+
+  const response = await fetch(endpoint, {
+    headers: { Accept: 'application/json' },
   });
 
-  const headers = { Accept: 'application/json' };
-  let authenticated = false;
-  if (env.OPENSKY_CLIENT_ID && env.OPENSKY_CLIENT_SECRET) {
-    const token = await getOpenSkyToken(env);
-    headers.Authorization = `Bearer ${token}`;
-    authenticated = true;
-  }
-
-  let response = await fetch(`${OPENSKY_URL}?${params}`, { headers });
-
-  if (response.status === 401 && authenticated) {
-    tokenCache = { token: null, expiresAt: 0 };
-    const token = await getOpenSkyToken(env);
-    headers.Authorization = `Bearer ${token}`;
-    response = await fetch(`${OPENSKY_URL}?${params}`, { headers });
-  }
-
   if (response.status === 429) {
-    const retryAfter = Number(response.headers.get('X-Rate-Limit-Retry-After-Seconds')) || 60;
-    const error = publicError(429, `OpenSky has reached its request limit. Try again in about ${retryAfter} seconds.`);
+    const retryAfter = Number(response.headers.get('Retry-After')) || 60;
+    const error = publicError(429, 'Airplanes.live has reached its request limit. Try again shortly.');
     error.retryAfter = retryAfter;
     throw error;
   }
   if (!response.ok) {
-    throw publicError(502, 'OpenSky did not return live aircraft data.');
+    throw publicError(502, 'Airplanes.live did not return live aircraft data.');
   }
 
-  return {
-    payload: await response.json(),
-    authenticated,
-    rateLimitRemaining: nullableNumber(response.headers.get('X-Rate-Limit-Remaining')),
-  };
+  const payload = await response.json();
+  if (!payload || !Array.isArray(payload.ac)) {
+    throw publicError(502, 'Airplanes.live returned an unexpected response.');
+  }
+  if (payload.msg && payload.msg !== 'No error') {
+    throw publicError(502, 'Airplanes.live could not complete the live aircraft request.');
+  }
+  return payload;
 }
 
-async function getOpenSkyToken(env) {
-  const now = Date.now();
-  if (tokenCache.token && tokenCache.expiresAt > now + 30_000) {
-    return tokenCache.token;
-  }
-
-  const body = new URLSearchParams({
-    grant_type: 'client_credentials',
-    client_id: env.OPENSKY_CLIENT_ID,
-    client_secret: env.OPENSKY_CLIENT_SECRET,
-  });
-  const response = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-  if (!response.ok) {
-    throw publicError(502, 'OpenSky authentication failed.');
-  }
-
-  const data = await response.json();
-  tokenCache = {
-    token: data.access_token,
-    expiresAt: now + (Number(data.expires_in) || 1800) * 1000,
-  };
-  return tokenCache.token;
-}
-
-function pruneCache() {
-  if (responseCache.size < 100) return;
-  const cutoff = Date.now() - CACHE_TTL_MS * 2;
-  for (const [key, entry] of responseCache) {
-    if (entry.createdAt < cutoff) responseCache.delete(key);
-  }
-}
-
-function nullableNumber(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
+function createCacheKey(requestUrl, location, rangeKm) {
+  const url = new URL(requestUrl);
+  url.pathname = '/__over-my-home-cache/aircraft';
+  url.search = '';
+  url.searchParams.set('lat', location.latitude.toFixed(3));
+  url.searchParams.set('lon', location.longitude.toFixed(3));
+  url.searchParams.set('range', String(rangeKm));
+  return new Request(url.toString(), { method: 'GET' });
 }
 
 function publicError(status, publicMessage) {
