@@ -1,27 +1,232 @@
 {
   "liveUrl": "https://over-my-home.pages.dev",
   "postcode": "YO32 9QU",
-  "startedAt": "2026-07-24T19:32:57.670Z",
+  "startedAt": "2026-07-24T19:36:47.335Z",
   "deployment": {
     "status": 200,
     "attempts": 1
   },
   "api": {
     "status": 200,
-    "aircraftCount": 1,
-    "generatedAt": "2026-07-24T19:32:57.973Z",
+    "aircraftCount": 2,
+    "generatedAt": "2026-07-24T19:36:47.899Z",
     "location": {
       "postcode": "YO32 9QU",
       "area": "York"
     },
     "cache": "MISS",
     "soundStates": {
-      "unlikely": 1
+      "unlikely": 2
     }
   },
-  "viewports": [],
-  "deterministic": {},
-  "status": "failed",
-  "completedAt": "2026-07-24T19:33:01.196Z",
-  "error": "AssertionError [ERR_ASSERTION]: Oversized radar-key sample: {\"width\":43.421875,\"height\":23.1875,\"tag\":\"SPAN\",\"className\":\"radar-key-badge\"}\n    at inspectLegend (file:///home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:198:12)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at process.processImmediate (node:internal/timers:452:9)\n    at process.callbackTrampoline (node:internal/async_hooks:130:17)\n    at async inspectViewport (file:///home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:115:20)\n    at async file:///home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:32:29"
+  "viewports": [
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "overflow": 0,
+      "legend": {
+        "selector": ".radar-key",
+        "itemCount": 7,
+        "samples": [
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 43.421875,
+            "height": 23.1875,
+            "tag": "SPAN",
+            "className": "radar-key-badge"
+          }
+        ]
+      },
+      "supportDirection": "column",
+      "aircraftCount": 2,
+      "zeroState": false,
+      "labelOverlapCount": 0,
+      "motion": {
+        "checked": true,
+        "aircraft": "4d20e1",
+        "beforeTransform": "translate(494.20 362.51)",
+        "afterTransform": "translate(493.17 359.37)",
+        "beforeAge": "1s",
+        "afterAge": "3s"
+      }
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024,
+      "overflow": 0,
+      "legend": {
+        "selector": ".radar-key",
+        "itemCount": 7,
+        "samples": [
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 43.421875,
+            "height": 23.1875,
+            "tag": "SPAN",
+            "className": "radar-key-badge"
+          }
+        ]
+      },
+      "supportDirection": "row",
+      "aircraftCount": 2,
+      "zeroState": false,
+      "labelOverlapCount": 0,
+      "motion": {
+        "checked": true,
+        "aircraft": "4d20e1",
+        "beforeTransform": "translate(492.39 357.03)",
+        "afterTransform": "translate(491.35 353.89)",
+        "beforeAge": "4s",
+        "afterAge": "6s"
+      }
+    },
+    {
+      "name": "desktop",
+      "width": 1020,
+      "height": 900,
+      "overflow": 0,
+      "legend": {
+        "selector": ".radar-key",
+        "itemCount": 7,
+        "samples": [
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 32,
+            "height": 32,
+            "tag": "svg",
+            "className": ""
+          },
+          {
+            "width": 43.421875,
+            "height": 23.1875,
+            "tag": "SPAN",
+            "className": "radar-key-badge"
+          }
+        ]
+      },
+      "supportDirection": "row",
+      "aircraftCount": 2,
+      "zeroState": false,
+      "labelOverlapCount": 0,
+      "motion": {
+        "checked": true,
+        "aircraft": "4d20e1",
+        "beforeTransform": "translate(490.59 351.58)",
+        "afterTransform": "translate(489.55 348.44)",
+        "beforeAge": "8s",
+        "afterAge": "10s"
+      }
+    }
+  ],
+  "deterministic": {
+    "soundTransition": {
+      "passed": true
+    },
+    "zeroAircraft": {
+      "passed": true
+    }
+  },
+  "status": "passed",
+  "completedAt": "2026-07-24T19:37:03.790Z"
 }
