@@ -1,0 +1,50 @@
+name: Temporary branch check
+
+on:
+  push:
+    branches:
+      - agent/shared-tile-cache-stale-fallback
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Run checks and record result
+        shell: bash
+        run: |
+          set +e
+          npm test
+          UNIT_STATUS=$?
+          npm run test:browser
+          BROWSER_STATUS=$?
+          set -e
+          mkdir -p branch-check
+          cat > branch-check/report.json <<EOF
+          {
+            "commit": "${GITHUB_SHA}",
+            "unitStatus": ${UNIT_STATUS},
+            "browserStatus": ${BROWSER_STATUS},
+            "passed": $([ "${UNIT_STATUS}" -eq 0 ] && [ "${BROWSER_STATUS}" -eq 0 ] && echo true || echo false)
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f branch-check/report.json
+          git commit -m "Record temporary branch check [skip check]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          if [ "${UNIT_STATUS}" -ne 0 ] || [ "${BROWSER_STATUS}" -ne 0 ]; then
+            exit 1
+          fi
