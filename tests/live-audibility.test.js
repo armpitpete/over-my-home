@@ -9,7 +9,8 @@ import {
   slantDistanceKm,
   soundRangeKm,
 } from '../audibility.js';
-import { projectAircraftPosition } from '../motion.js';
+import { projectAircraftPosition, projectAltitudeFt } from '../motion.js';
+import { formatRadarAltitude, radarBearingLabel } from '../radar.js';
 
 const appSource = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const cssSource = await readFile(new URL('../audibility.css', import.meta.url), 'utf8');
@@ -84,11 +85,39 @@ test('a fast powered aircraft can change audibility during one correction interv
   assert.equal(audibilityForPosition(after), 'possible');
 });
 
-test('the one-second update keeps radar and card sound states aligned', () => {
+test('projects altitude from vertical rate during the correction interval', () => {
+  assert.equal(projectAltitudeFt(5_000, 1_200, 30), 5_600);
+  assert.equal(projectAltitudeFt(5_000, -600, 60), 4_400);
+
+  const climbingWithoutTrack = projectAircraftPosition(
+    {
+      altitudeFt: 5_000,
+      verticalRateFpm: 1_200,
+      horizontalDistanceKm: 8,
+      bearingDegrees: 90,
+    },
+    30,
+  );
+  assert.equal(climbingWithoutTrack.altitudeFt, 5_600);
+});
+
+test('formats simple altitude labels for the radar', () => {
+  assert.equal(formatRadarAltitude(825), '800 ft');
+  assert.equal(formatRadarAltitude(3_000), '3.0k ft');
+  assert.equal(formatRadarAltitude(12_300), '12k ft');
+  assert.equal(formatRadarAltitude(null), '');
+  assert.equal(radarBearingLabel(91), 'E');
+});
+
+test('the one-second update keeps radar, altitude and card sound states aligned', () => {
   assert.match(appSource, /audibilityForPosition\(projectedAircraft\)/);
   assert.match(appSource, /setAudibilityState\(target, audibilityBadge, audibility\)/);
+  assert.match(appSource, /altitudeLabel\.textContent = formatRadarAltitude\(projectedAircraft\.altitudeFt\)/);
+  assert.match(appSource, /target\.setAttribute\('aria-label', radarTargetAriaLabel\(projectedAircraft\)\)/);
+  assert.match(appSource, /class: 'radar-target-altitude'/);
   assert.match(appSource, /\['likely', 'possible', 'unlikely'\]/);
   assert.equal(audibilityLabel('unlikely'), 'Unlikely audible');
   assert.match(cssSource, /\.radar-target\.unlikely \.radar-pulse/);
   assert.match(cssSource, /\.audibility-badge\.unlikely/);
+  assert.match(cssSource, /\.radar-target-altitude/);
 });
