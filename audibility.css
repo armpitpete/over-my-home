@@ -18,3 +18,25 @@
   background: rgba(127, 145, 168, 0.12);
   color: #b8c3d0;
 }
+
+.radar-target-altitude {
+  fill: var(--muted);
+  paint-order: stroke;
+  stroke: #07101d;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.radar-target.selected .radar-target-altitude {
+  fill: #fff2a8;
+}
+
+@media (max-width: 460px) {
+  .radar-target-altitude {
+    font-size: 10px;
+  }
+}
