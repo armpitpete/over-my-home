@@ -16,7 +16,7 @@ jobs:
   acceptance:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,6 +29,10 @@ jobs:
           LIVE_URL: https://over-my-home.pages.dev
           ACCEPTANCE_POSTCODE: YO32 9QU
         run: node scripts/live-production-acceptance.mjs
+      - name: Test live shared tile cache
+        env:
+          LIVE_URL: https://over-my-home.pages.dev
+        run: node scripts/live-provider-cache-acceptance.mjs
       - name: Upload acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
