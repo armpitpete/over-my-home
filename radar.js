@@ -20,6 +20,7 @@ export function ringLabels(rangeKm) {
 }
 
 export function formatRadarAltitude(altitudeFt) {
+  if (altitudeFt === null || altitudeFt === undefined || altitudeFt === '') return '';
   const altitude = Number(altitudeFt);
   if (!Number.isFinite(altitude)) return '';
 
