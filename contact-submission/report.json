@@ -1,0 +1,10 @@
+{
+  "contactUrl": "https://store.airplanes.live/pages/contact",
+  "senderName": "Merrin W. Dream",
+  "senderEmail": "merrin@merrinworld.uk",
+  "startedAt": "2026-07-24T20:20:31.233Z",
+  "status": "failed",
+  "completedAt": "2026-07-24T20:21:01.348Z",
+  "finalUrl": "https://store.airplanes.live/pages/contact",
+  "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('input[name=\"contact[name]\"]').or(getByLabel(/^Name$/i)).first() to be visible\n\n    at /home/runner/work/over-my-home/over-my-home/scripts/send-airplanes-live-request.mjs:58:14"
+}
