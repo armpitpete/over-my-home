@@ -9,6 +9,7 @@ import {
 
 const indexSource = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const cssSource = await readFile(new URL('../radar-legend.css', import.meta.url), 'utf8');
+const audibilityCssSource = await readFile(new URL('../audibility.css', import.meta.url), 'utf8');
 const layoutSource = await readFile(new URL('../radar-legend-layout.js', import.meta.url), 'utf8');
 const emptyStateSource = await readFile(new URL('../radar-empty-state.js', import.meta.url), 'utf8');
 
@@ -16,25 +17,29 @@ const expectedLabels = [
   'Aircraft symbol',
   'Solid ring — likely audible',
   'Dashed ring — possibly audible',
-  'Yellow ring — selected aircraft; solid or dashed still shows audibility',
+  'Dotted grey ring — unlikely audible',
+  'Yellow ring — selected aircraft; ring pattern still shows audibility',
   'Shield — confirmed military',
   'MLAT badge — position derived by multilateration',
 ];
 
-test('explains every radar symbol and ring state', () => {
+test('explains every radar symbol and sound state', () => {
   assert.deepEqual(Object.values(RADAR_KEY_LABELS), expectedLabels);
   const markup = radarKeyMarkup();
   expectedLabels.forEach((label) => assert.ok(markup.includes(label)));
+  assert.match(markup, /stroke="#7f91a8"[^>]*stroke-dasharray="1 5"/);
 });
 
 test('gives every generated SVG an intrinsic 32 pixel size', () => {
   const markup = radarKeyMarkup();
   const svgMatches = markup.match(/<svg width="32" height="32"/g) || [];
-  assert.equal(svgMatches.length, 5);
+  assert.equal(svgMatches.length, 6);
 });
 
-test('loads the radar key stylesheet through the page head', () => {
+test('loads both radar key and audibility stylesheets through the page head', () => {
   assert.match(indexSource, /<link rel="stylesheet" href="\/radar-legend\.css" \/>/);
+  assert.match(indexSource, /<link rel="stylesheet" href="\/audibility\.css" \/>/);
+  assert.match(audibilityCssSource, /stroke-dasharray: 1 5/);
 });
 
 test('caps key samples at two rem and preserves responsive columns', () => {

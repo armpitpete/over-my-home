@@ -2,7 +2,8 @@ export const RADAR_KEY_LABELS = Object.freeze({
   aircraft: 'Aircraft symbol',
   likely: 'Solid ring — likely audible',
   possible: 'Dashed ring — possibly audible',
-  selected: 'Yellow ring — selected aircraft; solid or dashed still shows audibility',
+  unlikely: 'Dotted grey ring — unlikely audible',
+  selected: 'Yellow ring — selected aircraft; ring pattern still shows audibility',
   military: 'Shield — confirmed military',
   mlat: 'MLAT badge — position derived by multilateration',
 });
@@ -28,6 +29,10 @@ export function radarKeyMarkup() {
     keyItem(
       sampleSvg('<circle cx="16" cy="16" r="10" fill="rgba(96, 230, 174, 0.1)" stroke="rgba(96, 230, 174, 0.9)" stroke-width="3" stroke-dasharray="5 4"></circle>'),
       RADAR_KEY_LABELS.possible,
+    ),
+    keyItem(
+      sampleSvg('<circle cx="16" cy="16" r="10" fill="none" stroke="#7f91a8" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 5"></circle>'),
+      RADAR_KEY_LABELS.unlikely,
     ),
     keyItem(
       sampleSvg('<circle cx="16" cy="16" r="10" fill="rgba(255, 214, 61, 0.16)" stroke="var(--accent)" stroke-width="5"></circle>'),

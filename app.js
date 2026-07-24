@@ -1,6 +1,6 @@
-import { radarPosition, ringLabels } from './radar.js';
+import { formatRadarAltitude, radarBearingLabel, radarPosition, ringLabels } from './radar.js';
 import { createMotionState, projectMotionState } from './motion.js';
-import { audibilityForPosition } from './audibility.js';
+import { audibilityForPosition, audibilityLabel } from './audibility.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const form = document.querySelector('#search-form');
@@ -167,11 +167,13 @@ function renderAircraft(data) {
   data.aircraft.forEach((aircraft, index) => {
     const id = aircraft.icao24 || `aircraft-${index}`;
     availableIds.add(id);
-    renderAircraftCard(aircraft, id);
-    const target = renderRadarTarget(aircraft, id, data.rangeKm);
+    const audibilityBadge = renderAircraftCard(aircraft, id);
+    const { target, altitudeLabel } = renderRadarTarget(aircraft, id, data.rangeKm);
     radarMotionItems.set(id, {
       motionState: createMotionState(aircraft, data.generatedAt, receivedAtMs),
       target,
+      altitudeLabel,
+      audibilityBadge,
     });
   });
 
@@ -201,8 +203,7 @@ function renderAircraftCard(aircraft, id) {
   sourceBadge.classList.toggle('mlat', aircraft.source === 'mlat');
 
   const audibilityBadge = card.querySelector('.audibility-badge');
-  audibilityBadge.textContent = aircraft.audibility === 'likely' ? 'Likely audible' : 'Possibly audible';
-  audibilityBadge.classList.toggle('possible', aircraft.audibility !== 'likely');
+  setAudibilityState(null, audibilityBadge, aircraft.audibility);
 
   card.querySelector('.fact-distance').textContent = `${aircraft.slantDistanceKm.toFixed(1)} km`;
   card.querySelector('.fact-altitude').textContent = aircraft.altitudeFt == null
@@ -228,17 +229,18 @@ function renderAircraftCard(aircraft, id) {
     }
   });
   aircraftList.append(card);
+  return audibilityBadge;
 }
 
 function renderRadarTarget(aircraft, id, rangeKm) {
   const position = radarPosition(aircraft, rangeKm);
   const target = svgElement('g', {
-    class: `radar-target${aircraft.military ? ' military' : ''}${aircraft.audibility === 'likely' ? ' likely' : ''}`,
+    class: `radar-target${aircraft.military ? ' military' : ''} ${aircraft.audibility}`,
     transform: radarTransform(position),
     tabindex: '0',
     role: 'button',
     'aria-pressed': 'false',
-    'aria-label': `${displayName(aircraft)}, ${aircraft.bearingLabel}, ${aircraft.horizontalDistanceKm.toFixed(1)} kilometres away`,
+    'aria-label': radarTargetAriaLabel(aircraft),
   });
   target.dataset.aircraftId = id;
 
@@ -256,9 +258,18 @@ function renderRadarTarget(aircraft, id, rangeKm) {
     transform: `rotate(${Number.isFinite(aircraft.trackDegrees) ? aircraft.trackDegrees : 0})`,
   }));
 
-  const label = svgElement('text', { class: 'radar-target-label', y: '-31', 'text-anchor': 'middle' });
+  const label = svgElement('text', { class: 'radar-target-label', y: '-34', 'text-anchor': 'middle' });
   label.textContent = shortLabel(aircraft);
   target.append(label);
+
+  const altitudeLabel = svgElement('text', {
+    class: 'radar-target-altitude',
+    y: '-22',
+    'text-anchor': 'middle',
+    'aria-hidden': 'true',
+  });
+  altitudeLabel.textContent = formatRadarAltitude(aircraft.altitudeFt);
+  target.append(altitudeLabel);
 
   target.addEventListener('click', () => selectAircraft(id, true));
   target.addEventListener('keydown', (event) => {
@@ -268,7 +279,7 @@ function renderRadarTarget(aircraft, id, rangeKm) {
     }
   });
   radarAircraft.append(target);
-  return target;
+  return { target, altitudeLabel };
 }
 
 function startMotion() {
@@ -293,13 +304,23 @@ function stopMotion() {
 function updateRadarMotion() {
   if (document.visibilityState !== 'visible') return;
 
-  for (const { motionState, target } of radarMotionItems.values()) {
+  for (const { motionState, target, altitudeLabel, audibilityBadge } of radarMotionItems.values()) {
     const projectedAircraft = projectMotionState(motionState);
     const position = radarPosition(projectedAircraft, currentRangeKm);
     const audibility = audibilityForPosition(projectedAircraft);
     target.setAttribute('transform', radarTransform(position));
-    target.classList.toggle('likely', audibility === 'likely');
+    target.setAttribute('aria-label', radarTargetAriaLabel(projectedAircraft));
+    altitudeLabel.textContent = formatRadarAltitude(projectedAircraft.altitudeFt);
+    setAudibilityState(target, audibilityBadge, audibility);
   }
+}
+
+function setAudibilityState(target, badge, audibility) {
+  for (const state of ['likely', 'possible', 'unlikely']) {
+    target?.classList.toggle(state, audibility === state);
+    badge?.classList.toggle(state, audibility === state);
+  }
+  if (badge) badge.textContent = audibilityLabel(audibility);
 }
 
 function radarTransform(position) {
@@ -347,6 +368,18 @@ function displayName(aircraft) {
 function shortLabel(aircraft) {
   const value = aircraft.callsign || aircraft.registration || aircraft.typeCode || aircraft.icao24.toUpperCase();
   return value.slice(0, 10);
+}
+
+function radarTargetAriaLabel(aircraft) {
+  const parts = [displayName(aircraft)];
+  const altitude = Number(aircraft.altitudeFt);
+  if (Number.isFinite(altitude)) {
+    parts.push(`altitude ${Math.round(altitude).toLocaleString('en-GB')} feet`);
+  }
+  parts.push(
+    `${radarBearingLabel(aircraft.bearingDegrees)}, ${Math.max(0, Number(aircraft.horizontalDistanceKm) || 0).toFixed(1)} kilometres from home`,
+  );
+  return parts.join(', ');
 }
 
 function svgElement(name, attributes = {}) {

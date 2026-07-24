@@ -12,6 +12,7 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
     <link rel="stylesheet" href="/radar-legend.css" />
+    <link rel="stylesheet" href="/audibility.css" />
     <title>Over My Home</title>
   </head>
   <body>
@@ -55,7 +56,7 @@
           <div class="range-row">
             <div>
               <label for="range">Modelled hearing distance</label>
-              <p class="field-help">This is an estimate, not a sound measurement.</p>
+              <p class="field-help">Estimate uses aircraft class, motion, altitude and distance—not a microphone.</p>
             </div>
             <output id="range-output" for="range">18 km</output>
           </div>
@@ -87,6 +88,12 @@
                 <circle cx="9" cy="9" r="6" fill="rgba(96, 230, 174, 0.1)" stroke="rgba(96, 230, 174, 0.9)" stroke-width="2" stroke-dasharray="3 2"></circle>
               </svg>
               Dashed circle — possibly audible
+            </span>
+            <span>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+                <circle cx="9" cy="9" r="6" fill="none" stroke="#7f91a8" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 4"></circle>
+              </svg>
+              Dotted grey circle — unlikely audible
             </span>
             <span><i class="legend-military" aria-hidden="true"></i> Confirmed military</span>
             <span><i class="legend-mlat" aria-hidden="true"></i> MLAT position</span>
@@ -132,14 +139,14 @@
         <div class="results-heading-row">
           <div>
             <p id="location-label" class="location-label"></p>
-            <h2 id="results-heading">Aircraft you may hear</h2>
+            <h2 id="results-heading">Aircraft in range</h2>
           </div>
           <p id="updated-at" class="updated-at"></p>
         </div>
 
         <div id="empty-state" class="empty-state" hidden>
           <div class="empty-icon" aria-hidden="true">✦</div>
-          <h3>No modelled-audible aircraft right now</h3>
+          <h3>No aircraft in range right now</h3>
           <p>The sky can change quickly. This page checks again automatically.</p>
         </div>
 
