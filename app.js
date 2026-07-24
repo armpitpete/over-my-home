@@ -17,7 +17,6 @@ const cardTemplate = document.querySelector('#aircraft-card-template');
 const radarAircraft = document.querySelector('#radar-aircraft');
 const radarEmpty = document.querySelector('#radar-empty');
 const radarRingLabels = [...document.querySelectorAll('[data-ring-label]')];
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 const REFRESH_MS = 180_000;
 const MOTION_TICK_MS = 1_000;
@@ -91,11 +90,6 @@ document.addEventListener('visibilitychange', () => {
 
   startMotion();
   scheduleRefresh(REFRESH_MS - timeSinceFetch);
-});
-
-reducedMotion.addEventListener?.('change', () => {
-  if (reducedMotion.matches) stopMotion();
-  else startMotion();
 });
 
 if (savedPostcode) {
@@ -280,7 +274,6 @@ function startMotion() {
   stopMotion();
   updateRadarMotion();
   if (
-    reducedMotion.matches ||
     document.visibilityState !== 'visible' ||
     radarMotionItems.size === 0
   ) {
