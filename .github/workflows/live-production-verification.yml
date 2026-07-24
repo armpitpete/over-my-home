@@ -18,7 +18,8 @@ jobs:
         env:
           BASE_URL: https://over-my-home.pages.dev
         run: |
-          set -euo pipefail
+          set -u
+          failures=0
 
           request() {
             local url="$1"
@@ -39,23 +40,39 @@ jobs:
               "$url"
           }
 
+          require_text() {
+            local text="$1"
+            local file="$2"
+            if grep -Fq "$text" "$file"; then
+              echo "PASS marker: $text"
+            else
+              echo "FAIL missing marker: $text"
+              failures=$((failures + 1))
+            fi
+          }
+
           homepage_status="$(request "$BASE_URL/" homepage.html homepage.headers)"
-          echo "Homepage status: $homepage_status"
+          echo "=== HOMEPAGE STATUS: $homepage_status ==="
           cat homepage.headers
-          test "$homepage_status" = "200"
-          grep -Fq 'Graphical local sky' homepage.html
-          grep -Fq 'Airplanes.live' homepage.html
-          grep -Fq 'Confirmed military' homepage.html
-          grep -Fq 'id="aircraft-list"' homepage.html
+          echo "=== HOMEPAGE BODY ==="
+          cat homepage.html
+          if [ "$homepage_status" != "200" ]; then failures=$((failures + 1)); fi
+          require_text 'Graphical local sky' homepage.html
+          require_text 'Airplanes.live' homepage.html
+          require_text 'Confirmed military' homepage.html
+          require_text 'id="aircraft-list"' homepage.html
 
           api_url="$BASE_URL/api/aircraft?postcode=YO32%209QU&range=18"
           api_status="$(request "$api_url" api.json api.headers)"
-          echo "API status: $api_status"
+          echo "=== API STATUS: $api_status ==="
           cat api.headers
+          echo "=== API BODY ==="
           cat api.json
-          test "$api_status" = "200"
+          echo
+          if [ "$api_status" != "200" ]; then failures=$((failures + 1)); fi
 
-          node <<'NODE'
+          if [ "$api_status" = "200" ]; then
+            node <<'NODE' || failures=$((failures + 1))
           const fs = require('node:fs');
           const payload = JSON.parse(fs.readFileSync('api.json', 'utf8'));
           if (payload.location?.postcode !== 'YO32 9QU') throw new Error('Unexpected postcode');
@@ -67,10 +84,19 @@ jobs:
           console.log(`Live aircraft returned: ${payload.aircraft.length}`);
           console.log(`Generated at: ${payload.generatedAt}`);
           NODE
+          fi
 
           sleep 2
           second_status="$(request "$api_url" api-second.json api-second.headers)"
-          echo "Second API status: $second_status"
+          echo "=== SECOND API STATUS: $second_status ==="
           cat api-second.headers
-          test "$second_status" = "200"
-          grep -Eiq '^x-over-my-home-cache: HIT' api-second.headers
+          if [ "$second_status" != "200" ]; then failures=$((failures + 1)); fi
+          if grep -Eiq '^x-over-my-home-cache: HIT' api-second.headers; then
+            echo 'PASS Cloudflare function cache: HIT'
+          else
+            echo 'FAIL Cloudflare function cache did not report HIT'
+            failures=$((failures + 1))
+          fi
+
+          echo "Verification failures: $failures"
+          test "$failures" -eq 0
