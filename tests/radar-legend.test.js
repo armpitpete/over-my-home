@@ -37,6 +37,7 @@ test('lays the key out as three, two and one responsive columns', () => {
   assert.match(RADAR_KEY_STYLES, /max-width: 760px[\s\S]*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(RADAR_KEY_STYLES, /max-width: 520px[\s\S]*grid-template-columns: 1fr/);
   assert.match(RADAR_KEY_STYLES, /font-size: 0\.92rem/);
+  assert.match(RADAR_KEY_STYLES, /width: 2rem;\n  height: 2rem/);
 });
 
 test('loads the full-width key through the existing page module', () => {
