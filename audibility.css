@@ -19,6 +19,22 @@
   color: #b8c3d0;
 }
 
+.audibility-reason {
+  margin: 0.9rem 0 0;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.audibility-reason strong {
+  color: var(--good);
+}
+
+.projection-note {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .radar-target-altitude {
   fill: var(--muted);
   paint-order: stroke;
