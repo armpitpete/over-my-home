@@ -1,6 +1,7 @@
 const EARTH_RADIUS_KM = 6371.0088;
 const FEET_TO_KM = 0.0003048;
 const KNOTS_TO_METRES_PER_SECOND = 0.514444;
+const LIKELY_AUDIBLE_DISTANCE_KM = 12;
 
 export function normalisePostcode(value) {
   const compact = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
@@ -108,7 +109,7 @@ export function parseAirplanesAircraft(record, home, rangeKm) {
     }),
     category: cleanString(record.category),
     categoryLabel: military ? 'Military aircraft' : categoryLabel(record.category),
-    audibility: slantDistanceKm <= Math.min(12, rangeKm * 0.7) ? 'likely' : 'possible',
+    audibility: slantDistanceKm <= LIKELY_AUDIBLE_DISTANCE_KM ? 'likely' : 'possible',
     source: cleanString(record.type) || 'unknown',
     sourceLabel: sourceLabel(record.type),
     military,
