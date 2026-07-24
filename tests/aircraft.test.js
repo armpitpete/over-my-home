@@ -10,8 +10,12 @@ import {
   sourceLabel,
 } from '../functions/lib/aircraft.js';
 import {
+  CORRECTION_INTERVAL_SECONDS,
+  MAX_INITIAL_AGE_SECONDS,
   MAX_PROJECTION_SECONDS,
+  createMotionState,
   projectAircraftPosition,
+  projectMotionState,
   projectionElapsedSeconds,
 } from '../motion.js';
 import { radarPosition, ringLabels } from '../radar.js';
@@ -145,7 +149,7 @@ test('projects visual aircraft movement from speed and track', () => {
   assert.equal(Number(projected.bearingDegrees.toFixed(3)), 90);
 });
 
-test('caps visual projection at the three-minute correction interval', () => {
+test('caps visual movement at the three-minute correction interval', () => {
   const projected = projectAircraftPosition(
     {
       horizontalDistanceKm: 0,
@@ -156,14 +160,37 @@ test('caps visual projection at the three-minute correction interval', () => {
     600,
   );
 
+  assert.equal(CORRECTION_INTERVAL_SECONDS, 180);
   assert.equal(MAX_PROJECTION_SECONDS, 180);
   assert.equal(Number(projected.horizontalDistanceKm.toFixed(3)), 33.336);
 });
 
-test('includes provider and cache age when calculating visual projection time', () => {
+test('allows source age plus the full three-minute cache age', () => {
   const generatedAt = '2026-07-24T12:00:00.000Z';
-  const nowMs = Date.parse('2026-07-24T12:01:00.000Z');
+  const nowMs = Date.parse('2026-07-24T12:03:00.000Z');
 
-  assert.equal(projectionElapsedSeconds(5, generatedAt, nowMs), 65);
-  assert.equal(projectionElapsedSeconds(90, generatedAt, nowMs + 120_000), 180);
+  assert.equal(MAX_INITIAL_AGE_SECONDS, 270);
+  assert.equal(projectionElapsedSeconds(90, generatedAt, nowMs), 270);
+});
+
+test('cached aircraft continue moving once per second after reaching the browser', () => {
+  const receivedAtMs = Date.parse('2026-07-24T12:03:00.000Z');
+  const motionState = createMotionState(
+    {
+      horizontalDistanceKm: 0,
+      bearingDegrees: 0,
+      speedKnots: 360,
+      trackDegrees: 90,
+      positionAgeSeconds: 90,
+    },
+    '2026-07-24T12:00:00.000Z',
+    receivedAtMs,
+  );
+
+  const atReceipt = projectMotionState(motionState, receivedAtMs);
+  const oneSecondLater = projectMotionState(motionState, receivedAtMs + 1_000);
+
+  assert.equal(Number(atReceipt.horizontalDistanceKm.toFixed(3)), 50.004);
+  assert.equal(Number(oneSecondLater.horizontalDistanceKm.toFixed(3)), 50.189);
+  assert.ok(oneSecondLater.horizontalDistanceKm > atReceipt.horizontalDistanceKm);
 });
