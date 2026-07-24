@@ -19,6 +19,22 @@
   color: #b8c3d0;
 }
 
+.audibility-reason {
+  margin: 0.9rem 0 0;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.audibility-reason strong {
+  color: var(--good);
+}
+
+.projection-note {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .radar-target-altitude {
   fill: var(--muted);
   paint-order: stroke;
@@ -35,22 +51,8 @@
   fill: #fff2a8;
 }
 
-#sky-radar.labels-decluttered .radar-target-label {
-  font-size: 10px;
-  letter-spacing: 0.01em;
-  pointer-events: none;
-}
-
-#sky-radar.labels-decluttered .radar-target-altitude {
-  display: none;
-}
-
 @media (max-width: 460px) {
   .radar-target-altitude {
     font-size: 10px;
-  }
-
-  #sky-radar.labels-decluttered .radar-target-label {
-    font-size: 10.5px;
   }
 }

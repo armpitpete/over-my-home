@@ -110,9 +110,10 @@ test('formats simple altitude labels for the radar', () => {
   assert.equal(radarBearingLabel(91), 'E');
 });
 
-test('the one-second update keeps radar, altitude and card sound states aligned', () => {
+test('the one-second update keeps radar, altitude and projected cards aligned', () => {
   assert.match(appSource, /audibilityForPosition\(projectedAircraft\)/);
-  assert.match(appSource, /setAudibilityState\(target, audibilityBadge, audibility\)/);
+  assert.match(appSource, /setAudibilityState\(target, null, audibility\)/);
+  assert.match(appSource, /updateProjectedCard\(cardView, projectedAircraft, audibility\)/);
   assert.match(appSource, /altitudeLabel\.textContent = formatRadarAltitude\(projectedAircraft\.altitudeFt\)/);
   assert.match(appSource, /target\.setAttribute\('aria-label', radarTargetAriaLabel\(projectedAircraft\)\)/);
   assert.match(appSource, /class: 'radar-target-altitude'/);
@@ -121,4 +122,5 @@ test('the one-second update keeps radar, altitude and card sound states aligned'
   assert.match(cssSource, /\.radar-target\.unlikely \.radar-pulse/);
   assert.match(cssSource, /\.audibility-badge\.unlikely/);
   assert.match(cssSource, /\.radar-target-altitude/);
+  assert.match(cssSource, /\.audibility-reason/);
 });
