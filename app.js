@@ -1,4 +1,5 @@
 import { radarPosition, ringLabels } from './radar.js';
+import { projectAircraftPosition, projectionElapsedSeconds } from './motion.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const form = document.querySelector('#search-form');
@@ -16,12 +17,19 @@ const cardTemplate = document.querySelector('#aircraft-card-template');
 const radarAircraft = document.querySelector('#radar-aircraft');
 const radarEmpty = document.querySelector('#radar-empty');
 const radarRingLabels = [...document.querySelectorAll('[data-ring-label]')];
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-const REFRESH_MS = 60_000;
+const REFRESH_MS = 180_000;
+const MOTION_TICK_MS = 1_000;
 let refreshTimer = null;
+let motionTimer = null;
 let currentRequest = null;
 let activePostcode = '';
 let selectedAircraftId = '';
+let lastSuccessfulFetchAt = 0;
+let currentRangeKm = 18;
+let currentGeneratedAt = '';
+const radarMotionItems = new Map();
 
 const savedPostcode = localStorage.getItem('over-my-home.postcode');
 const savedRange = localStorage.getItem('over-my-home.range');
@@ -65,6 +73,32 @@ refreshButton.addEventListener('click', () => {
   if (activePostcode) fetchAircraft(activePostcode);
 });
 
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    stopMotion();
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+    currentRequest?.abort();
+    return;
+  }
+
+  if (!activePostcode || currentRequest) return;
+
+  const timeSinceFetch = Date.now() - lastSuccessfulFetchAt;
+  if (!lastSuccessfulFetchAt || timeSinceFetch >= REFRESH_MS) {
+    fetchAircraft(activePostcode);
+    return;
+  }
+
+  startMotion();
+  scheduleRefresh(REFRESH_MS - timeSinceFetch);
+});
+
+reducedMotion.addEventListener?.('change', () => {
+  if (reducedMotion.matches) stopMotion();
+  else startMotion();
+});
+
 if (savedPostcode) {
   activePostcode = normalisePostcode(savedPostcode);
   if (activePostcode) fetchAircraft(activePostcode);
@@ -82,6 +116,7 @@ function normalisePostcode(value) {
 
 async function fetchAircraft(postcode) {
   clearTimeout(refreshTimer);
+  refreshTimer = null;
   if (currentRequest) currentRequest.abort();
   currentRequest = new AbortController();
 
@@ -97,6 +132,7 @@ async function fetchAircraft(postcode) {
 
     const response = await fetch(url, {
       signal: currentRequest.signal,
+      cache: 'no-store',
       headers: { Accept: 'application/json' },
     });
     const data = await response.json().catch(() => ({}));
@@ -106,6 +142,7 @@ async function fetchAircraft(postcode) {
     }
 
     renderAircraft(data);
+    lastSuccessfulFetchAt = Date.now();
     setStatus(`${data.aircraft.length} aircraft detected`);
   } catch (error) {
     if (error.name === 'AbortError') return;
@@ -114,19 +151,19 @@ async function fetchAircraft(postcode) {
     submitButton.disabled = false;
     refreshButton.disabled = false;
     currentRequest = null;
-    refreshTimer = setTimeout(() => {
-      if (activePostcode && document.visibilityState === 'visible') {
-        fetchAircraft(activePostcode);
-      }
-    }, REFRESH_MS);
+    scheduleRefresh();
   }
 }
 
 function renderAircraft(data) {
+  stopMotion();
+  radarMotionItems.clear();
   aircraftList.replaceChildren();
   radarAircraft.replaceChildren();
   locationLabel.textContent = `${data.location.postcode} · ${data.location.area}`;
   updatedAt.textContent = `Updated ${formatClock(data.generatedAt)}`;
+  currentRangeKm = data.rangeKm;
+  currentGeneratedAt = data.generatedAt;
   updateRadarScale(data.rangeKm);
 
   emptyState.hidden = data.aircraft.length !== 0;
@@ -137,13 +174,15 @@ function renderAircraft(data) {
     const id = aircraft.icao24 || `aircraft-${index}`;
     availableIds.add(id);
     renderAircraftCard(aircraft, id);
-    renderRadarTarget(aircraft, id, data.rangeKm);
+    const target = renderRadarTarget(aircraft, id, data.rangeKm);
+    radarMotionItems.set(id, { aircraft, target });
   });
 
   if (!availableIds.has(selectedAircraftId)) {
     selectedAircraftId = data.aircraft[0]?.icao24 || '';
   }
   if (selectedAircraftId) selectAircraft(selectedAircraftId);
+  startMotion();
 }
 
 function renderAircraftCard(aircraft, id) {
@@ -198,7 +237,7 @@ function renderRadarTarget(aircraft, id, rangeKm) {
   const position = radarPosition(aircraft, rangeKm);
   const target = svgElement('g', {
     class: `radar-target${aircraft.military ? ' military' : ''}${aircraft.audibility === 'likely' ? ' likely' : ''}`,
-    transform: `translate(${position.x.toFixed(2)} ${position.y.toFixed(2)})`,
+    transform: radarTransform(position),
     tabindex: '0',
     role: 'button',
     'aria-pressed': 'false',
@@ -232,6 +271,57 @@ function renderRadarTarget(aircraft, id, rangeKm) {
     }
   });
   radarAircraft.append(target);
+  return target;
+}
+
+function startMotion() {
+  stopMotion();
+  updateRadarMotion();
+  if (
+    reducedMotion.matches ||
+    document.visibilityState !== 'visible' ||
+    radarMotionItems.size === 0
+  ) {
+    return;
+  }
+  motionTimer = window.setInterval(updateRadarMotion, MOTION_TICK_MS);
+}
+
+function stopMotion() {
+  if (motionTimer !== null) {
+    clearInterval(motionTimer);
+    motionTimer = null;
+  }
+}
+
+function updateRadarMotion() {
+  if (document.visibilityState !== 'visible') return;
+
+  for (const { aircraft, target } of radarMotionItems.values()) {
+    const elapsedSeconds = projectionElapsedSeconds(
+      aircraft.positionAgeSeconds,
+      currentGeneratedAt,
+    );
+    const projectedAircraft = projectAircraftPosition(aircraft, elapsedSeconds);
+    const position = radarPosition(projectedAircraft, currentRangeKm);
+    target.setAttribute('transform', radarTransform(position));
+  }
+}
+
+function radarTransform(position) {
+  return `translate(${position.x.toFixed(2)} ${position.y.toFixed(2)})`;
+}
+
+function scheduleRefresh(delay = REFRESH_MS) {
+  clearTimeout(refreshTimer);
+  refreshTimer = null;
+  if (!activePostcode || document.visibilityState !== 'visible') return;
+
+  refreshTimer = window.setTimeout(() => {
+    if (activePostcode && document.visibilityState === 'visible') {
+      fetchAircraft(activePostcode);
+    }
+  }, Math.max(0, delay));
 }
 
 function selectAircraft(id, scrollToCard = false) {
