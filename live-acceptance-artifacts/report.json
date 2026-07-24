@@ -1,17 +1,15 @@
 {
   "liveUrl": "https://over-my-home.pages.dev",
   "postcode": "YO32 9QU",
-  "startedAt": "2026-07-24T19:26:10.551Z",
+  "startedAt": "2026-07-24T19:32:57.670Z",
   "deployment": {
     "status": 200,
-    "attempts": 1,
-    "radarRangeCopy": true,
-    "supportCopy": true
+    "attempts": 1
   },
   "api": {
     "status": 200,
     "aircraftCount": 1,
-    "generatedAt": "2026-07-24T19:26:11.026Z",
+    "generatedAt": "2026-07-24T19:32:57.973Z",
     "location": {
       "postcode": "YO32 9QU",
       "area": "York"
@@ -23,7 +21,7 @@
   },
   "viewports": [],
   "deterministic": {},
-  "completedAt": "2026-07-24T19:26:12.094Z",
   "status": "failed",
-  "error": "AssertionError [ERR_ASSERTION]: Radar legend samples are missing.\n    at inspectLiveViewport (file:///home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:153:12)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at process.processImmediate (node:internal/timers:452:9)\n    at process.callbackTrampoline (node:internal/async_hooks:130:17)\n    at async file:///home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:32:29"
+  "completedAt": "2026-07-24T19:33:01.196Z",
+  "error": "AssertionError [ERR_ASSERTION]: Oversized radar-key sample: {\"width\":43.421875,\"height\":23.1875,\"tag\":\"SPAN\",\"className\":\"radar-key-badge\"}\n    at inspectLegend (file:///home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:198:12)\n    at runNextTicks (node:internal/process/task_queues:64:5)\n    at process.processImmediate (node:internal/timers:452:9)\n    at process.callbackTrampoline (node:internal/async_hooks:130:17)\n    at async inspectViewport (file:///home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:115:20)\n    at async file:///home/runner/work/over-my-home/over-my-home/scripts/live-production-acceptance.mjs:32:29"
 }
