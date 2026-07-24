@@ -6,7 +6,11 @@
   "description": "A graphical local-sky instrument for live aircraft near UK postcodes, powered by Airplanes.live.",
   "scripts": {
     "test": "node --test",
-    "serve": "python -m http.server 4173"
+    "test:browser": "playwright test",
+    "serve": "python3 -m http.server 4173"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.0"
   },
   "engines": {
     "node": ">=20"
