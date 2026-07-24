@@ -22,7 +22,7 @@ const expectedLabels = [
 test('explains every radar symbol and ring state', () => {
   assert.deepEqual(Object.values(RADAR_KEY_LABELS), expectedLabels);
   const markup = radarKeyMarkup();
-  expectedLabels.forEach((label) => assert.equal(markup.includes(label), true));
+  expectedLabels.forEach((label) => assert.ok(markup.includes(label)));
 });
 
 test('uses large matching samples for likely, possible and selected rings', () => {
