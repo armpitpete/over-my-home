@@ -33,6 +33,9 @@ jobs:
         env:
           LIVE_URL: https://over-my-home.pages.dev
         run: node scripts/live-provider-cache-acceptance.mjs
+      - name: Submit approved Airplanes.live request
+        if: github.event_name == 'push'
+        run: node scripts/send-airplanes-live-request.mjs
       - name: Upload acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -41,17 +44,29 @@ jobs:
           path: live-acceptance-artifacts
           if-no-files-found: error
           retention-days: 7
-      - name: Record acceptance report on branch
+      - name: Upload contact-submission evidence
         if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: airplanes-live-contact-submission
+          path: contact-submission
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Record reports on branch
+        if: always() && github.event_name == 'push'
+        shell: bash
         run: |
-          if [ ! -f live-acceptance-artifacts/report.json ]; then
+          FILES=()
+          [ -f live-acceptance-artifacts/report.json ] && FILES+=(live-acceptance-artifacts/report.json)
+          [ -f contact-submission/report.json ] && FILES+=(contact-submission/report.json)
+          if [ "${#FILES[@]}" -eq 0 ]; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f live-acceptance-artifacts/report.json
+          git add -f "${FILES[@]}"
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "Record live acceptance result [skip acceptance]"
+          git commit -m "Record live acceptance and contact results [skip acceptance]"
           git push origin "HEAD:${GITHUB_REF_NAME}"
