@@ -8,6 +8,11 @@ import {
 const AIRPLANES_URL = 'https://api.airplanes.live/v2/point';
 const POSTCODE_URL = 'https://api.postcodes.io/postcodes';
 const CACHE_TTL_SECONDS = 180;
+const AUDIBILITY_PRIORITY = Object.freeze({
+  likely: 0,
+  possible: 1,
+  unlikely: 2,
+});
 
 export async function onRequestGet(context) {
   const url = new URL(context.request.url);
@@ -33,7 +38,7 @@ export async function onRequestGet(context) {
     const aircraft = (payload.ac || [])
       .map((record) => parseAirplanesAircraft(record, location, rangeKm))
       .filter(Boolean)
-      .sort((a, b) => a.slantDistanceKm - b.slantDistanceKm);
+      .sort(compareAircraftBySoundThenDistance);
 
     const body = {
       generatedAt: new Date().toISOString(),
@@ -73,6 +78,15 @@ export async function onRequestGet(context) {
       error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : undefined,
     );
   }
+}
+
+export function compareAircraftBySoundThenDistance(first = {}, second = {}) {
+  const priorityDifference = audibilityPriority(first.audibility) - audibilityPriority(second.audibility);
+  if (priorityDifference) return priorityDifference;
+
+  const firstDistance = finiteDistance(first.slantDistanceKm);
+  const secondDistance = finiteDistance(second.slantDistanceKm);
+  return firstDistance - secondDistance;
 }
 
 async function lookupPostcode(postcode) {
@@ -142,6 +156,15 @@ function createCacheKey(requestUrl, location, rangeKm) {
   url.searchParams.set('lon', location.longitude.toFixed(3));
   url.searchParams.set('range', String(rangeKm));
   return new Request(url.toString(), { method: 'GET' });
+}
+
+function audibilityPriority(value) {
+  return AUDIBILITY_PRIORITY[String(value || '').toLowerCase()] ?? AUDIBILITY_PRIORITY.unlikely;
+}
+
+function finiteDistance(value) {
+  const distance = Number(value);
+  return Number.isFinite(distance) ? distance : Number.POSITIVE_INFINITY;
 }
 
 function publicError(status, publicMessage) {
