@@ -7,67 +7,8 @@ export const RADAR_KEY_LABELS = Object.freeze({
   mlat: 'MLAT badge — position derived by multilateration',
 });
 
-export const RADAR_KEY_STYLES = `
-.radar-key {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.7rem 0.9rem;
-  width: 100%;
-  margin: 0 0 1rem;
-  padding: 0.9rem;
-  border: 1px solid var(--line);
-  border-radius: 0.8rem;
-  background: rgba(7, 16, 29, 0.56);
-  color: var(--text);
-  font-size: 0.92rem;
-  line-height: 1.3;
-}
-.radar-key-item {
-  display: grid;
-  grid-template-columns: 2.1rem minmax(0, 1fr);
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-}
-.radar-key-sample {
-  display: grid;
-  place-items: center;
-  width: 2.1rem;
-  height: 2.1rem;
-}
-.radar-key-sample svg {
-  display: block;
-  width: 2rem;
-  height: 2rem;
-  overflow: visible;
-}
-.radar-key-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.1rem;
-  min-height: 1.45rem;
-  padding: 0.12rem 0.3rem;
-  border: 2px solid var(--mlat);
-  border-radius: 999px;
-  color: var(--mlat);
-  font-size: 0.62rem;
-  font-weight: 900;
-}
-@media (max-width: 760px) {
-  .radar-key { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 520px) {
-  .radar-key {
-    grid-template-columns: 1fr;
-    margin-inline: 0.35rem;
-    width: calc(100% - 0.7rem);
-  }
-}
-`;
-
 function sampleSvg(content) {
-  return `<span class="radar-key-sample" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false">${content}</svg></span>`;
+  return `<span class="radar-key-sample" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 32 32" focusable="false">${content}</svg></span>`;
 }
 
 function keyItem(sample, label) {
@@ -112,14 +53,6 @@ export function enhanceRadarLegend(root = document) {
   legend.setAttribute('aria-label', 'Radar symbol key');
   legend.innerHTML = radarKeyMarkup();
   help.insertAdjacentElement('afterend', legend);
-
-  if (!root.querySelector('#radar-key-styles')) {
-    const style = root.createElement('style');
-    style.id = 'radar-key-styles';
-    style.textContent = RADAR_KEY_STYLES;
-    root.head.append(style);
-  }
-
   return true;
 }
 
