@@ -2,12 +2,17 @@ import {
   clampRange,
   normalisePostcode,
   parseAirplanesAircraft,
-  radiusKmToNauticalMiles,
 } from '../lib/aircraft.js';
+import {
+  aircraftTileCacheKey,
+  aircraftTileForLocation,
+  staleAgeSeconds,
+} from '../lib/aircraft-tile.js';
 
 const AIRPLANES_URL = 'https://api.airplanes.live/v2/point';
 const POSTCODE_URL = 'https://api.postcodes.io/postcodes';
-const CACHE_TTL_SECONDS = 180;
+const FRESH_CACHE_TTL_SECONDS = 300;
+const STALE_CACHE_TTL_SECONDS = 1_800;
 const AUDIBILITY_PRIORITY = Object.freeze({
   likely: 0,
   possible: 1,
@@ -25,23 +30,16 @@ export async function onRequestGet(context) {
 
   try {
     const location = await lookupPostcode(postcode);
-    const cacheKey = createCacheKey(context.request.url, location, rangeKm);
-    const cache = typeof caches === 'undefined' ? null : caches.default;
-    const cached = cache ? await cache.match(cacheKey) : null;
-
-    if (cached) {
-      const cachedBody = await cached.json();
-      return json(cachedBody, 200, { 'X-Over-My-Home-Cache': 'HIT' });
-    }
-
-    const payload = await loadAirplanes(location, rangeKm);
-    const aircraft = (payload.ac || [])
+    const tile = aircraftTileForLocation(location);
+    const cache = globalThis.caches?.default || null;
+    const tileData = await loadTileData({ context, cache, tile });
+    const aircraft = (tileData.payload.ac || [])
       .map((record) => parseAirplanesAircraft(record, location, rangeKm))
       .filter(Boolean)
       .sort(compareAircraftBySoundThenDistance);
 
     const body = {
-      generatedAt: new Date().toISOString(),
+      generatedAt: tileData.fetchedAt,
       location: {
         postcode: location.postcode,
         area: location.area,
@@ -51,23 +49,16 @@ export async function onRequestGet(context) {
       source: {
         provider: 'Airplanes.live',
         nonCommercial: true,
-        refreshSeconds: CACHE_TTL_SECONDS,
+        refreshSeconds: FRESH_CACHE_TTL_SECONDS,
+        tileId: tile.id,
+        stale: tileData.stale,
+        staleAgeSeconds: tileData.stale
+          ? staleAgeSeconds(tileData.fetchedAt)
+          : 0,
       },
     };
 
-    if (cache) {
-      const cacheResponse = new Response(JSON.stringify(body), {
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`,
-        },
-      });
-      const cacheWrite = cache.put(cacheKey, cacheResponse);
-      if (typeof context.waitUntil === 'function') context.waitUntil(cacheWrite);
-      else await cacheWrite;
-    }
-
-    return json(body, 200, { 'X-Over-My-Home-Cache': 'MISS' });
+    return json(body, 200, { 'X-Over-My-Home-Cache': tileData.cacheStatus });
   } catch (error) {
     const status = Number(error.status) || 502;
     return json(
@@ -87,6 +78,52 @@ export function compareAircraftBySoundThenDistance(first = {}, second = {}) {
   const firstDistance = finiteDistance(first.slantDistanceKm);
   const secondDistance = finiteDistance(second.slantDistanceKm);
   return firstDistance - secondDistance;
+}
+
+export async function loadTileData({ context, cache, tile }) {
+  const freshKey = aircraftTileCacheKey(context.request.url, tile, 'fresh');
+  const staleKey = aircraftTileCacheKey(context.request.url, tile, 'stale');
+  const freshRecord = await readCacheRecord(cache, freshKey);
+
+  if (freshRecord) {
+    return {
+      ...freshRecord,
+      stale: false,
+      cacheStatus: 'HIT',
+    };
+  }
+
+  try {
+    const payload = await loadAirplanes(tile);
+    const record = {
+      fetchedAt: new Date().toISOString(),
+      payload,
+    };
+
+    if (cache) {
+      const cacheWrite = Promise.all([
+        writeCacheRecord(cache, freshKey, record, FRESH_CACHE_TTL_SECONDS),
+        writeCacheRecord(cache, staleKey, record, STALE_CACHE_TTL_SECONDS),
+      ]);
+      if (typeof context.waitUntil === 'function') context.waitUntil(cacheWrite);
+      else await cacheWrite;
+    }
+
+    return {
+      ...record,
+      stale: false,
+      cacheStatus: 'MISS',
+    };
+  } catch (error) {
+    const staleRecord = await readCacheRecord(cache, staleKey);
+    if (!staleRecord) throw error;
+
+    return {
+      ...staleRecord,
+      stale: true,
+      cacheStatus: 'STALE',
+    };
+  }
 }
 
 async function lookupPostcode(postcode) {
@@ -115,13 +152,12 @@ async function lookupPostcode(postcode) {
   };
 }
 
-async function loadAirplanes(location, rangeKm) {
-  const radiusNm = radiusKmToNauticalMiles(rangeKm);
+async function loadAirplanes(tile) {
   const endpoint = [
     AIRPLANES_URL,
-    location.latitude.toFixed(5),
-    location.longitude.toFixed(5),
-    radiusNm,
+    tile.centreLatitude.toFixed(5),
+    tile.centreLongitude.toFixed(5),
+    tile.radiusNm,
   ].join('/');
 
   const response = await fetch(endpoint, {
@@ -148,14 +184,24 @@ async function loadAirplanes(location, rangeKm) {
   return payload;
 }
 
-function createCacheKey(requestUrl, location, rangeKm) {
-  const url = new URL(requestUrl);
-  url.pathname = '/__over-my-home-cache/aircraft';
-  url.search = '';
-  url.searchParams.set('lat', location.latitude.toFixed(3));
-  url.searchParams.set('lon', location.longitude.toFixed(3));
-  url.searchParams.set('range', String(rangeKm));
-  return new Request(url.toString(), { method: 'GET' });
+async function readCacheRecord(cache, key) {
+  if (!cache) return null;
+  const response = await cache.match(key);
+  if (!response) return null;
+
+  const record = await response.json().catch(() => null);
+  if (!record?.fetchedAt || !Array.isArray(record?.payload?.ac)) return null;
+  return record;
+}
+
+async function writeCacheRecord(cache, key, record, maxAgeSeconds) {
+  const response = new Response(JSON.stringify(record), {
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': `public, max-age=${maxAgeSeconds}`,
+    },
+  });
+  await cache.put(key, response);
 }
 
 function audibilityPriority(value) {
