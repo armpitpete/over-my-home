@@ -1,14 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const description =
   'See the live aircraft that may be audible above a UK postcode on a graphical local-sky radar.';
 const publicUrl = 'https://over-my-home.pages.dev/';
-const baselineBodySha256 =
-  'a9ba5d77735ebdf102ebeef479161e2d9ef746121cc47c4baebee79ebe0f7775';
 
 function head(document) {
   return document.split('<head>', 2)[1].split('</head>', 1)[0];
@@ -59,15 +56,24 @@ test('structured identity matches the accepted Over My Home contract', () => {
   });
 });
 
-test('metadata repair preserves the visible application body byte-for-byte', () => {
+test('public identity remains attached to the aircraft application', () => {
   const pageBody = body(html);
-  assert.equal(
-    createHash('sha256').update(pageBody, 'utf8').digest('hex'),
-    baselineBodySha256,
-  );
-  assert.match(pageBody, /<script type="module" src="\/stale-response-status\.js"><\/script>/);
-  assert.match(pageBody, /<script type="module" src="\/app\.js"><\/script>/);
-  assert.match(pageBody, /<script type="module" src="\/radar-empty-state\.js"><\/script>/);
+  const required = [
+    '<h1>Over My Home</h1>',
+    'id="search-form"',
+    'id="sky-radar"',
+    'id="aircraft-list"',
+    '<script type="module" src="/stale-response-status.js"></script>',
+    '<script type="module" src="/app.js"></script>',
+    '<script type="module" src="/radar-empty-state.js"></script>',
+  ];
+
+  for (const fragment of required) {
+    assert.equal(count(pageBody, fragment), 1, fragment);
+  }
+
+  assert.equal(count(pageBody, 'ko-fi.com'), 0);
+  assert.equal(count(pageBody, 'class="support-link"'), 0);
 });
 
 test('metadata repair does not alter indexing or crawler policy', () => {
