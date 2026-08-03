@@ -72,8 +72,9 @@ test('public identity remains attached to the aircraft application', () => {
     assert.equal(count(pageBody, fragment), 1, fragment);
   }
 
-  assert.equal(count(pageBody, 'ko-fi.com'), 0);
-  assert.equal(count(pageBody, 'class="support-link"'), 0);
+  assert.equal(count(pageBody, 'https://ko-fi.com/lirava'), 1);
+  assert.equal(count(pageBody, 'class="support-link"'), 1);
+  assert.equal(count(pageBody, 'ko-fi.com/merrindream'), 0);
 });
 
 test('metadata repair does not alter indexing or crawler policy', () => {
