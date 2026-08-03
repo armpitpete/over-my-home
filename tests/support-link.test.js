@@ -9,6 +9,7 @@ test('shows the Over My Home Ko-fi prompt with the correct destination', () => {
   assert.match(page, /If you find Over My Home useful,/);
   assert.match(page, />Support it on Ko-fi<\/a>\s*<\/p>/);
   assert.match(page, /href="https:\/\/ko-fi\.com\/lirava"/);
+  assert.equal((page.match(/https:\/\/ko-fi\.com\/lirava/g) ?? []).length, 1);
   assert.doesNotMatch(page, /ko-fi\.com\/merrindream/i);
 });
 
