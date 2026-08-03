@@ -87,6 +87,8 @@ for (const viewport of [
 
     await expect(page.locator('.aircraft-card')).toHaveCount(2);
     await expect(page.locator('#status')).toHaveText('2 aircraft detected');
+    await expect(page.locator('.support-link')).toHaveText('Support it on Ko-fi');
+    await expect(page.locator('.new-tab-note')).toHaveCount(0);
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
@@ -121,6 +123,9 @@ for (const viewport of [
       labelBoxes[1].bottom <= labelBoxes[0].top
     );
     expect(overlap).toBe(false);
+
+    const supportDirection = await page.locator('.support-prompt').evaluate((node) => getComputedStyle(node).flexDirection);
+    expect(supportDirection).toBe(viewport.width <= 600 ? 'column' : 'row');
   });
 }
 
@@ -157,9 +162,13 @@ test('zero aircraft shows both factual empty states', async ({ page }) => {
   await expect(page.locator('#empty-state h3')).toHaveText('No aircraft in range right now');
 });
 
-test('does not expose a cross-project Ko-fi destination', async ({ page }) => {
-  await page.goto('/');
+test('Ko-fi uses the correct Lirava destination and keeps the aircraft view open', async ({ page }) => {
+  await mockAircraftResponse(page);
+  await search(page);
 
-  await expect(page.locator('.support-link')).toHaveCount(0);
-  await expect(page.locator('a[href*="ko-fi.com"]')).toHaveCount(0);
+  const support = page.locator('.support-link');
+  await expect(support).toHaveAttribute('href', 'https://ko-fi.com/lirava');
+  await expect(support).toHaveAttribute('target', '_blank');
+  await expect(support).toHaveAttribute('rel', /noopener/);
+  await expect(support).toHaveText('Support it on Ko-fi');
 });
