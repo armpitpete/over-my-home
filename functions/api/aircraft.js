@@ -81,7 +81,7 @@ export function compareAircraftBySoundThenDistance(first = {}, second = {}) {
 }
 
 export async function loadTileData({ context, cache, tile }) {
-  const freshKey = aircraftTileCacheKey(context.request.url, tile, 'fresh');
+  const freshKey = aircraftTileCacheKey(context.request.url, tile, 'fresh-v2');
   const staleKey = aircraftTileCacheKey(context.request.url, tile, 'stale');
   const freshRecord = await readCacheRecord(cache, freshKey);
 
