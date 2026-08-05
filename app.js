@@ -2,6 +2,10 @@ import { formatRadarAltitude, radarBearingLabel, radarPosition, ringLabels } fro
 import { createMotionState, projectMotionState } from './motion.js';
 import { audibilityForPosition, audibilityLabel } from './audibility.js';
 import { cardProjection } from './presentation.js';
+import {
+  CIVILIAN_REFRESH_MS,
+  refreshIntervalForAircraft,
+} from './refresh-policy.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const form = document.querySelector('#search-form');
@@ -20,7 +24,6 @@ const radarAircraft = document.querySelector('#radar-aircraft');
 const radarEmpty = document.querySelector('#radar-empty');
 const radarRingLabels = [...document.querySelectorAll('[data-ring-label]')];
 
-const REFRESH_MS = 180_000;
 const MOTION_TICK_MS = 1_000;
 let refreshTimer = null;
 let motionTimer = null;
@@ -29,6 +32,7 @@ let activePostcode = '';
 let selectedAircraftId = '';
 let lastSuccessfulFetchAt = 0;
 let currentRangeKm = 18;
+let currentRefreshMs = CIVILIAN_REFRESH_MS;
 const radarMotionItems = new Map();
 
 const savedPostcode = localStorage.getItem('over-my-home.postcode');
@@ -85,13 +89,13 @@ document.addEventListener('visibilitychange', () => {
   if (!activePostcode || currentRequest) return;
 
   const timeSinceFetch = Date.now() - lastSuccessfulFetchAt;
-  if (!lastSuccessfulFetchAt || timeSinceFetch >= REFRESH_MS) {
+  if (!lastSuccessfulFetchAt || timeSinceFetch >= currentRefreshMs) {
     fetchAircraft(activePostcode);
     return;
   }
 
   startMotion();
-  scheduleRefresh(REFRESH_MS - timeSinceFetch);
+  scheduleRefresh(currentRefreshMs - timeSinceFetch);
 });
 
 if (savedPostcode) {
@@ -158,6 +162,7 @@ function renderAircraft(data) {
   locationLabel.textContent = `${data.location.postcode} · ${data.location.area}`;
   updatedAt.textContent = `Updated ${formatClock(data.generatedAt)}`;
   currentRangeKm = data.rangeKm;
+  currentRefreshMs = refreshIntervalForAircraft(data.aircraft);
   updateRadarScale(data.rangeKm);
 
   emptyState.hidden = data.aircraft.length !== 0;
@@ -345,7 +350,7 @@ function radarTransform(position) {
   return `translate(${position.x.toFixed(2)} ${position.y.toFixed(2)})`;
 }
 
-function scheduleRefresh(delay = REFRESH_MS) {
+function scheduleRefresh(delay = currentRefreshMs) {
   clearTimeout(refreshTimer);
   refreshTimer = null;
   if (!activePostcode || document.visibilityState !== 'visible') return;
