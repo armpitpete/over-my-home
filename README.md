@@ -11,7 +11,7 @@ A small, mobile-first local-sky instrument that shows live aircraft which may be
 5. Preserves a complete accessible aircraft list beneath the graphic.
 6. Identifies an aircraft as military only when the provider supplies the military database flag.
 7. Labels ADS-B, MLAT and other position sources without treating them as equally exact.
-8. Projects radar symbols once per second from reported speed and track, then corrects them with real data every three minutes.
+8. Projects radar symbols once per second from reported speed and track, then corrects them with real data every three minutes, or every minute while confirmed military aircraft are present.
 9. Pauses movement and automatic requests while the browser tab is hidden.
 
 The accessible aircraft cards remain snapshots of the last real provider response. Only the graphical radar positions are extrapolated between corrections. Radar movement represents functional position data, so it continues when the visitor requests reduced decorative motion.
@@ -22,7 +22,7 @@ The result is an **audibility estimate**, not a measured claim. Aircraft type, e
 
 Over My Home is a free, non-commercial project. Its Airplanes.live integration must not be used for a paid product, advertising product, subscription service or other commercial purpose without obtaining suitable permission from Airplanes.live.
 
-Airplanes.live currently documents a free allowance of 500 API requests per day. The three-minute edge cache reduces repeated upstream requests, but this remains a low-traffic public beta rather than a guaranteed high-volume service.
+Airplanes.live currently documents a rate limit of one API request per second. Over My Home uses a short shared edge cache and adaptive client refresh intervals to avoid unnecessary repeated upstream requests.
 
 Airplanes.live provides no uptime guarantee. Its public API may change, become restricted or require contributor access later.
 
