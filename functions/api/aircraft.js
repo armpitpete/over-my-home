@@ -11,7 +11,7 @@ import {
 
 const AIRPLANES_URL = 'https://api.airplanes.live/v2/point';
 const POSTCODE_URL = 'https://api.postcodes.io/postcodes';
-const FRESH_CACHE_TTL_SECONDS = 300;
+const FRESH_CACHE_TTL_SECONDS = 55;
 const STALE_CACHE_TTL_SECONDS = 1_800;
 const AUDIBILITY_PRIORITY = Object.freeze({
   likely: 0,
