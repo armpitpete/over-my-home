@@ -4,6 +4,12 @@ import {
   parseAirplanesAircraft,
 } from '../lib/aircraft.js';
 import {
+  DEFAULT_GEOCODER_BASE_URL,
+  geocoderSearchUrl,
+  normaliseLocationQuery,
+  parseNominatimLocation,
+} from '../lib/location.js';
+import {
   aircraftTileCacheKey,
   aircraftTileForLocation,
   staleAgeSeconds,
@@ -13,23 +19,29 @@ const AIRPLANES_URL = 'https://api.airplanes.live/v2/point';
 const POSTCODE_URL = 'https://api.postcodes.io/postcodes';
 const FRESH_CACHE_TTL_SECONDS = 55;
 const STALE_CACHE_TTL_SECONDS = 1_800;
+const GEOCODER_CACHE_TTL_SECONDS = 86_400;
+const PUBLIC_GEOCODER_INTERVAL_MS = 1_000;
+const APP_IDENTITY = 'OverMyHome/0.3 (+https://over-my-home.pages.dev/)';
 const AUDIBILITY_PRIORITY = Object.freeze({
   likely: 0,
   possible: 1,
   unlikely: 2,
 });
+let nextPublicGeocoderRequestAt = 0;
 
 export async function onRequestGet(context) {
   const url = new URL(context.request.url);
-  const postcode = normalisePostcode(url.searchParams.get('postcode'));
+  const locationQuery = normaliseLocationQuery(
+    url.searchParams.get('location') || url.searchParams.get('postcode'),
+  );
   const rangeKm = clampRange(url.searchParams.get('range'));
 
-  if (!postcode) {
-    return json({ error: 'Enter a valid UK postcode.' }, 400);
+  if (!locationQuery) {
+    return json({ error: 'Enter a postcode, ZIP code, town or place.' }, 400);
   }
 
   try {
-    const location = await lookupPostcode(postcode);
+    const location = await lookupLocation(locationQuery, context);
     const tile = aircraftTileForLocation(location);
     const cache = globalThis.caches?.default || null;
     const tileData = await loadTileData({ context, cache, tile });
@@ -41,13 +53,16 @@ export async function onRequestGet(context) {
     const body = {
       generatedAt: tileData.fetchedAt,
       location: {
+        label: location.label || location.postcode,
         postcode: location.postcode,
         area: location.area,
+        countryCode: location.countryCode || null,
       },
       rangeKm,
       aircraft,
       source: {
         provider: 'Airplanes.live',
+        geocoder: location.source,
         nonCommercial: true,
         refreshSeconds: FRESH_CACHE_TTL_SECONDS,
         tileId: tile.id,
@@ -126,6 +141,12 @@ export async function loadTileData({ context, cache, tile }) {
   }
 }
 
+async function lookupLocation(query, context) {
+  const ukPostcode = normalisePostcode(query);
+  if (ukPostcode) return lookupPostcode(ukPostcode);
+  return lookupWorldwideLocation(query, context);
+}
+
 async function lookupPostcode(postcode) {
   const response = await fetch(`${POSTCODE_URL}/${encodeURIComponent(postcode)}`, {
     headers: { Accept: 'application/json' },
@@ -145,11 +166,98 @@ async function lookupPostcode(postcode) {
   }
 
   return {
+    label: result.postcode,
     postcode: result.postcode,
     latitude: result.latitude,
     longitude: result.longitude,
     area: result.admin_district || result.region || result.country || 'United Kingdom',
+    countryCode: 'GB',
+    source: 'Postcodes.io',
   };
+}
+
+async function lookupWorldwideLocation(query, context) {
+  const baseUrl = context.env?.GEOCODER_BASE_URL || DEFAULT_GEOCODER_BASE_URL;
+  const endpoint = geocoderSearchUrl(query, baseUrl);
+  const cache = globalThis.caches?.default || null;
+  const cacheKey = geocoderCacheKey(context.request.url, query, baseUrl);
+
+  if (cache) {
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      const location = await cached.json().catch(() => null);
+      if (hasUsableCoordinates(location)) return location;
+    }
+  }
+
+  if (new URL(baseUrl).origin === new URL(DEFAULT_GEOCODER_BASE_URL).origin) {
+    await respectPublicGeocoderRateLimit();
+  }
+
+  const response = await fetch(endpoint, {
+    headers: {
+      Accept: 'application/json',
+      'Accept-Language': context.request.headers.get('Accept-Language') || 'en',
+      Referer: 'https://over-my-home.pages.dev/',
+      'User-Agent': APP_IDENTITY,
+    },
+  });
+
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get('Retry-After')) || 60;
+    const error = publicError(429, 'The location service is busy. Try again shortly.');
+    error.retryAfter = retryAfter;
+    throw error;
+  }
+  if (!response.ok) {
+    throw publicError(502, 'The location service is temporarily unavailable.');
+  }
+
+  const results = await response.json().catch(() => null);
+  const location = parseNominatimLocation(Array.isArray(results) ? results[0] : null, query);
+  if (!location) {
+    throw publicError(404, 'That location was not found. Add a country if the name is ambiguous.');
+  }
+
+  if (cache) {
+    const cacheWrite = cache.put(
+      cacheKey,
+      new Response(JSON.stringify(location), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': `public, max-age=${GEOCODER_CACHE_TTL_SECONDS}`,
+        },
+      }),
+    );
+    if (typeof context.waitUntil === 'function') context.waitUntil(cacheWrite);
+    else await cacheWrite;
+  }
+
+  return location;
+}
+
+function geocoderCacheKey(requestUrl, query, baseUrl) {
+  const url = new URL('/__location-cache', requestUrl);
+  url.searchParams.set('q', query.toLocaleLowerCase());
+  url.searchParams.set('provider', new URL(baseUrl).origin);
+  return new Request(url.toString(), { method: 'GET' });
+}
+
+async function respectPublicGeocoderRateLimit() {
+  const now = Date.now();
+  const waitMs = Math.max(0, nextPublicGeocoderRequestAt - now);
+  nextPublicGeocoderRequestAt = Math.max(now, nextPublicGeocoderRequestAt) + PUBLIC_GEOCODER_INTERVAL_MS;
+  if (waitMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+}
+
+function hasUsableCoordinates(location) {
+  return Boolean(
+    location &&
+    Number.isFinite(Number(location.latitude)) &&
+    Number.isFinite(Number(location.longitude)),
+  );
 }
 
 async function loadAirplanes(tile) {
