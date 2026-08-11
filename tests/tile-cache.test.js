@@ -37,7 +37,7 @@ class MemoryCache {
 
   removeFreshEntries() {
     for (const key of this.entries.keys()) {
-      if (key.includes('/fresh?')) this.entries.delete(key);
+      if (key.includes('/aircraft-tile/fresh')) this.entries.delete(key);
     }
   }
 }

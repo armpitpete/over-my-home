@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const description =
-  'See the live aircraft that may be audible above a UK postcode on a graphical local-sky radar.';
+  'See live aircraft that may be audible near your location on a graphical local-sky radar.';
 const publicUrl = 'https://over-my-home.pages.dev/';
 
 function head(document) {

@@ -9,7 +9,7 @@ import {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const form = document.querySelector('#search-form');
-const postcodeInput = document.querySelector('#postcode');
+const locationInput = document.querySelector('#postcode');
 const rangeInput = document.querySelector('#range');
 const rangeOutput = document.querySelector('#range-output');
 const submitButton = form.querySelector('button[type="submit"]');
@@ -28,16 +28,18 @@ const MOTION_TICK_MS = 1_000;
 let refreshTimer = null;
 let motionTimer = null;
 let currentRequest = null;
-let activePostcode = '';
+let activeLocation = '';
 let selectedAircraftId = '';
 let lastSuccessfulFetchAt = 0;
 let currentRangeKm = 18;
 let currentRefreshMs = CIVILIAN_REFRESH_MS;
 const radarMotionItems = new Map();
 
-const savedPostcode = localStorage.getItem('over-my-home.postcode');
+const savedLocation =
+  localStorage.getItem('over-my-home.location') ||
+  localStorage.getItem('over-my-home.postcode');
 const savedRange = localStorage.getItem('over-my-home.range');
-if (savedPostcode) postcodeInput.value = savedPostcode;
+if (savedLocation) locationInput.value = savedLocation;
 if (savedRange && Number(savedRange) >= 8 && Number(savedRange) <= 30) {
   rangeInput.value = savedRange;
 }
@@ -51,30 +53,26 @@ rangeInput.addEventListener('input', () => {
 });
 
 rangeInput.addEventListener('change', () => {
-  if (activePostcode) fetchAircraft(activePostcode);
-});
-
-postcodeInput.addEventListener('input', () => {
-  postcodeInput.value = postcodeInput.value.toUpperCase();
+  if (activeLocation) fetchAircraft(activeLocation);
 });
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
-  const postcode = normalisePostcode(postcodeInput.value);
-  if (!postcode) {
-    setStatus('Enter a valid UK postcode.', true);
-    postcodeInput.focus();
+  const location = normaliseLocationInput(locationInput.value);
+  if (!location) {
+    setStatus('Enter a postcode, ZIP code, town or place.', true);
+    locationInput.focus();
     return;
   }
 
-  postcodeInput.value = postcode;
-  activePostcode = postcode;
-  localStorage.setItem('over-my-home.postcode', postcode);
-  fetchAircraft(postcode);
+  locationInput.value = location;
+  activeLocation = location;
+  localStorage.setItem('over-my-home.location', location);
+  fetchAircraft(location);
 });
 
 refreshButton.addEventListener('click', () => {
-  if (activePostcode) fetchAircraft(activePostcode);
+  if (activeLocation) fetchAircraft(activeLocation);
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -86,11 +84,11 @@ document.addEventListener('visibilitychange', () => {
     return;
   }
 
-  if (!activePostcode || currentRequest) return;
+  if (!activeLocation || currentRequest) return;
 
   const timeSinceFetch = Date.now() - lastSuccessfulFetchAt;
   if (!lastSuccessfulFetchAt || timeSinceFetch >= currentRefreshMs) {
-    fetchAircraft(activePostcode);
+    fetchAircraft(activeLocation);
     return;
   }
 
@@ -98,22 +96,22 @@ document.addEventListener('visibilitychange', () => {
   scheduleRefresh(currentRefreshMs - timeSinceFetch);
 });
 
-if (savedPostcode) {
-  activePostcode = normalisePostcode(savedPostcode);
-  if (activePostcode) fetchAircraft(activePostcode);
+if (savedLocation) {
+  activeLocation = normaliseLocationInput(savedLocation);
+  if (activeLocation) fetchAircraft(activeLocation);
 }
 
 function updateRangeOutput() {
   rangeOutput.textContent = `${rangeInput.value} km`;
 }
 
-function normalisePostcode(value) {
-  const compact = value.trim().toUpperCase().replace(/\s+/g, '');
-  if (!/^[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2}$/.test(compact)) return '';
-  return `${compact.slice(0, -3)} ${compact.slice(-3)}`;
+function normaliseLocationInput(value) {
+  const location = String(value || '').trim().replace(/\s+/g, ' ');
+  if (!location || location.length > 120) return '';
+  return location;
 }
 
-async function fetchAircraft(postcode) {
+async function fetchAircraft(location) {
   clearTimeout(refreshTimer);
   refreshTimer = null;
   if (currentRequest) currentRequest.abort();
@@ -126,7 +124,7 @@ async function fetchAircraft(postcode) {
 
   try {
     const url = new URL('/api/aircraft', window.location.origin);
-    url.searchParams.set('postcode', postcode);
+    url.searchParams.set('location', location);
     url.searchParams.set('range', rangeInput.value);
 
     const response = await fetch(url, {
@@ -159,7 +157,8 @@ function renderAircraft(data) {
   radarMotionItems.clear();
   aircraftList.replaceChildren();
   radarAircraft.replaceChildren();
-  locationLabel.textContent = `${data.location.postcode} · ${data.location.area}`;
+  const displayLocation = data.location.label || data.location.postcode || activeLocation;
+  locationLabel.textContent = [displayLocation, data.location.area].filter(Boolean).join(' · ');
   updatedAt.textContent = `Updated ${formatClock(data.generatedAt)}`;
   currentRangeKm = data.rangeKm;
   currentRefreshMs = refreshIntervalForAircraft(data.aircraft);
@@ -353,11 +352,11 @@ function radarTransform(position) {
 function scheduleRefresh(delay = currentRefreshMs) {
   clearTimeout(refreshTimer);
   refreshTimer = null;
-  if (!activePostcode || document.visibilityState !== 'visible') return;
+  if (!activeLocation || document.visibilityState !== 'visible') return;
 
   refreshTimer = window.setTimeout(() => {
-    if (activePostcode && document.visibilityState === 'visible') {
-      fetchAircraft(activePostcode);
+    if (activeLocation && document.visibilityState === 'visible') {
+      fetchAircraft(activeLocation);
     }
   }, Math.max(0, delay));
 }

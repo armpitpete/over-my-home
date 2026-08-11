@@ -1,9 +1,9 @@
 {
   "name": "over-my-home",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "A graphical local-sky instrument for live aircraft near UK postcodes, powered by Airplanes.live.",
+  "description": "A graphical local-sky instrument for live aircraft near locations worldwide, powered by Airplanes.live.",
   "scripts": {
     "test": "node --test",
     "test:browser": "playwright test",

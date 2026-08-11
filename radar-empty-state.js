@@ -1,7 +1,7 @@
 import './radar-legend-layout.js';
 import './radar-label-declutter.js';
 
-export const INITIAL_RADAR_MESSAGE = 'Enter a postcode to place live aircraft on the local sky.';
+export const INITIAL_RADAR_MESSAGE = 'Enter a location to place live aircraft on the local sky.';
 export const NO_AIRCRAFT_MESSAGE = 'No aircraft in range.';
 
 export function radarEmptyMessage(hasCompletedSearch, aircraftCount) {
